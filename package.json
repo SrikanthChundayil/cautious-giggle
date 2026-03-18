@@ -1,0 +1,12 @@
+{
+  "name": "srikanth-suite",
+  "version": "1.0.0",
+  "description": "Srikanth's Stitcher + Visualiser — Desktop Edition",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^28.0.0"
+  }
+}
