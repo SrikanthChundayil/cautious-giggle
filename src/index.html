@@ -251,8 +251,8 @@ textarea:focus{border-color:rgba(200,240,96,.35);}
   <div style="display:flex;align-items:center;gap:10px;margin-top:10px;">
     <button class="btn-render" id="renderBtn" onclick="startRender()" disabled>⬡ Render MP4</button>
     <select id="resSel" onchange="updateAspect()">
-      <option value="1920x1080x169">1920×1080 · 16:9 · HD</option>
-      <option value="2560x1440x169" selected>2560×1440 · 16:9 · 2K ✦</option>
+      <option value="1920x1080x169" selected>1920×1080 · 16:9 · HD</option>
+      <option value="2560x1440x169">2560×1440 · 16:9 · 2K ✦</option>
       <option value="3840x2160x169">3840×2160 · 16:9 · 4K</option>
       <option value="1080x1920x916">1080×1920 · 9:16 · Shorts</option>
       <option value="1080x1080x11">1080×1080 · 1:1 · Square</option>
@@ -1179,7 +1179,7 @@ function vTickSeek(){
 function vStopAudio(){if(vSource){try{vSource.onended=null;vSource.stop();}catch(e){}vSource=null;}vIsPlaying=false;vPlayBtn.textContent='▶';}
 function vSeekWhilePlaying(offset){
   if(vSource){try{vSource.onended=null;vSource.stop();}catch(e){}vSource=null;}cancelAnimationFrame(vAnimId);if(!vAudioCtx)return;
-  vAnalyser=vAudioCtx.createAnalyser();vAnalyser.fftSize=256;vSource=vAudioCtx.createBufferSource();vSource.buffer=vAudioBuffer;
+  vAnalyser=configureVisualAnalyser(vAudioCtx.createAnalyser());vSource=vAudioCtx.createBufferSource();vSource.buffer=vAudioBuffer;
   vSource.connect(vAnalyser);vAnalyser.connect(vAudioCtx.destination);
   const safe=Math.max(0,Math.min(offset,vAudioBuffer.duration-.01));vSource.start(0,safe);
   vPlayStartCtxTime=vAudioCtx.currentTime;vPlayStartOffset=safe;
@@ -1189,7 +1189,7 @@ function vSeekWhilePlaying(offset){
 }
 function vPlayAudioFrom(offset){
   if(!vAudioBuffer||!vAudioCtx)return;vStopAudio();
-  vAnalyser=vAudioCtx.createAnalyser();vAnalyser.fftSize=256;vSource=vAudioCtx.createBufferSource();vSource.buffer=vAudioBuffer;
+  vAnalyser=configureVisualAnalyser(vAudioCtx.createAnalyser());vSource=vAudioCtx.createBufferSource();vSource.buffer=vAudioBuffer;
   vSource.connect(vAnalyser);vAnalyser.connect(vAudioCtx.destination);
   const safe=Math.max(0,Math.min(offset,vAudioBuffer.duration-.01));vSource.start(0,safe);
   vPlayStartCtxTime=vAudioCtx.currentTime;vPlayStartOffset=safe;vIsPlaying=true;vPlayBtn.textContent='⏸';
@@ -1258,8 +1258,107 @@ document.getElementById('vAudioIn').addEventListener('change',async e=>{
 // ── RENDER ──────────────────────────────────────────────────
 const offscreen=document.getElementById('offscreen');const octx=offscreen.getContext('2d');
 const FPS=30;let offParts=[],offDrops=[];
+const VIS_ANALYSER_FFT_SIZE=256;
+const VIS_ANALYSER_BIN_COUNT=VIS_ANALYSER_FFT_SIZE/2;
+const VIS_ANALYSER_SMOOTHING=0.8;
+const VIS_ANALYSER_MIN_DB=-100;
+const VIS_ANALYSER_MAX_DB=-30;
+const VIS_ANALYSER_BLACKMAN=(()=>{
+  const w=new Float32Array(VIS_ANALYSER_FFT_SIZE);
+  for(let i=0;i<VIS_ANALYSER_FFT_SIZE;i++)w[i]=0.42-0.5*Math.cos((2*Math.PI*i)/(VIS_ANALYSER_FFT_SIZE-1))+0.08*Math.cos((4*Math.PI*i)/(VIS_ANALYSER_FFT_SIZE-1));
+  return w;
+})();
 
 function setRP(pct,label,sub){document.getElementById('rBar').style.width=pct+'%';document.getElementById('rPct').textContent=Math.round(pct)+'%';document.getElementById('rLabel').textContent=label;document.getElementById('rSub').textContent=sub||'';}
+
+function configureVisualAnalyser(analyser){
+  analyser.fftSize=VIS_ANALYSER_FFT_SIZE;
+  analyser.smoothingTimeConstant=VIS_ANALYSER_SMOOTHING;
+  analyser.minDecibels=VIS_ANALYSER_MIN_DB;
+  analyser.maxDecibels=VIS_ANALYSER_MAX_DB;
+  return analyser;
+}
+
+function fftInPlace(real,imag){
+  const n=real.length;
+  for(let i=1,j=0;i<n;i++){
+    let bit=n>>1;
+    for(;j&bit;bit>>=1)j^=bit;
+    j^=bit;
+    if(i<j){
+      let tmp=real[i];real[i]=real[j];real[j]=tmp;
+      tmp=imag[i];imag[i]=imag[j];imag[j]=tmp;
+    }
+  }
+  for(let len=2;len<=n;len<<=1){
+    const ang=(-2*Math.PI)/len;
+    const wlenCos=Math.cos(ang);
+    const wlenSin=Math.sin(ang);
+    for(let i=0;i<n;i+=len){
+      let wCos=1,wSin=0;
+      for(let j=0;j<len/2;j++){
+        const even=i+j;
+        const odd=even+len/2;
+        const vr=real[odd]*wCos-imag[odd]*wSin;
+        const vi=real[odd]*wSin+imag[odd]*wCos;
+        real[odd]=real[even]-vr;
+        imag[odd]=imag[even]-vi;
+        real[even]+=vr;
+        imag[even]+=vi;
+        const nextCos=wCos*wlenCos-wSin*wlenSin;
+        wSin=wCos*wlenSin+wSin*wlenCos;
+        wCos=nextCos;
+      }
+    }
+  }
+}
+
+function buildMixedMonoBuffer(audioBuffer){
+  const channelCount=audioBuffer.numberOfChannels;
+  const length=audioBuffer.length;
+  const mono=new Float32Array(length);
+  const channels=[];
+  for(let ch=0;ch<channelCount;ch++)channels.push(audioBuffer.getChannelData(ch));
+  for(let i=0;i<length;i++){
+    let sum=0;
+    for(let ch=0;ch<channelCount;ch++)sum+=channels[ch][i]||0;
+    mono[i]=sum/channelCount;
+  }
+  return mono;
+}
+
+function precomputeVisualAnalysisFrames(audioBuffer,totalFrames,fps,onProgress){
+  const mono=buildMixedMonoBuffer(audioBuffer);
+  const sampleRate=audioBuffer.sampleRate;
+  const hopSize=Math.max(1,Math.floor(sampleRate/fps));
+  const real=new Float32Array(VIS_ANALYSER_FFT_SIZE);
+  const imag=new Float32Array(VIS_ANALYSER_FFT_SIZE);
+  const prev=new Float32Array(VIS_ANALYSER_BIN_COUNT);
+  const frames=new Array(totalFrames);
+  for(let frameIndex=0;frameIndex<totalFrames;frameIndex++){
+    const frameSample=Math.floor(frameIndex*hopSize);
+    const windowStart=Math.max(0,frameSample-VIS_ANALYSER_FFT_SIZE);
+    real.fill(0);
+    imag.fill(0);
+    for(let i=0;i<VIS_ANALYSER_FFT_SIZE;i++){
+      const sourceIndex=windowStart+i;
+      real[i]=(sourceIndex<mono.length?mono[sourceIndex]:0)*VIS_ANALYSER_BLACKMAN[i];
+    }
+    fftInPlace(real,imag);
+    const bins=new Uint8Array(VIS_ANALYSER_BIN_COUNT);
+    for(let bin=0;bin<VIS_ANALYSER_BIN_COUNT;bin++){
+      const magnitude=Math.sqrt(real[bin]*real[bin]+imag[bin]*imag[bin])/VIS_ANALYSER_FFT_SIZE;
+      const db=magnitude>1e-8?20*Math.log10(magnitude):VIS_ANALYSER_MIN_DB;
+      const normalized=Math.max(0,Math.min(1,(db-VIS_ANALYSER_MIN_DB)/(VIS_ANALYSER_MAX_DB-VIS_ANALYSER_MIN_DB)));
+      const smoothed=prev[bin]*VIS_ANALYSER_SMOOTHING+normalized*(1-VIS_ANALYSER_SMOOTHING);
+      prev[bin]=smoothed;
+      bins[bin]=Math.round(smoothed*255);
+    }
+    frames[frameIndex]=bins;
+    if(onProgress&&(frameIndex===totalFrames-1||frameIndex%30===0))onProgress(frameIndex+1,totalFrames);
+  }
+  return frames;
+}
 
 async function startRender(){
   if(!vAudioBuffer||!vAudioFile)return;
@@ -1269,6 +1368,18 @@ async function startRender(){
   document.getElementById('rOverlay').classList.add('on');
 
   const isDesktop=window.electronAPI&&window.electronAPI.isDesktop;
+  const parallelRenderingEnabled=true;
+  const parallelLabel=parallelRenderingEnabled?'Parallel I/O: ON':'Parallel I/O: OFF';
+  let activeGpuCodec='h264_nvenc (GPU)';
+  const PROGRESS_FRAME_STEP=10;
+  const PROGRESS_MIN_MS=250;
+  const renderStartedAt=Date.now();
+  const fmtElapsed=(ms)=>{const t=Math.max(0,Math.floor(ms/1000));const h=Math.floor(t/3600),m=Math.floor((t%3600)/60),s=t%60;return h>0?`${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`:`${m}:${String(s).padStart(2,'0')}`;};
+  const buildRenderSub=(pct,codec,prLabel,extra)=>{
+    const elapsedMs=Date.now()-renderStartedAt;
+    const suffix=extra?` • ${extra}`:'';
+    return `Codec: ${codec} • ${prLabel} • Elapsed: ${fmtElapsed(elapsedMs)}${suffix}`;
+  };
 
   // ── DESKTOP PATH — native FFmpeg ──────────────────────
   if(isDesktop){
@@ -1280,6 +1391,18 @@ async function startRender(){
       document.getElementById('renderBtn').disabled=false;
       idleLoop();return;
     }
+
+    setRP(5,'Checking GPU encoder…','');
+    const gpuCheck=await window.electronAPI.checkGpuEncoder();
+    if(!gpuCheck.gpu){
+      alert('GPU encoder is required for desktop render, but h264_nvenc was not found in FFmpeg.\n\nInstall an FFmpeg build with NVENC support and update your GPU drivers.');
+      document.getElementById('rOverlay').classList.remove('on');
+      document.getElementById('renderBtn').disabled=false;
+      idleLoop();return;
+    }
+    activeGpuCodec=gpuCheck.encoder;
+    setRP(10,'Ready to render',buildRenderSub(10,activeGpuCodec,parallelLabel));
+    await new Promise(resolve=>setTimeout(resolve,800));
 
     // Ask user where to save
     const savePath=await window.electronAPI.saveDialog({
@@ -1297,20 +1420,25 @@ async function startRender(){
     offscreen.width=RW;offscreen.height=RH;
     offParts=Array.from({length:150},()=>new VSparkle());offDrops=[];
     const dur=vAudioBuffer.duration,totalFrames=Math.ceil(dur*FPS);
-    const sr=vAudioBuffer.sampleRate,cd=vAudioBuffer.getChannelData(0),hopSize=Math.floor(sr/FPS);
+    setRP(12,'Analysing audio…',buildRenderSub(12,activeGpuCodec,parallelLabel));
+    const analysisFrames=precomputeVisualAnalysisFrames(vAudioBuffer,totalFrames,FPS,(done,total)=>{
+      const pct=12+(done/total)*8;
+      setRP(pct,'Analysing audio…',buildRenderSub(pct,activeGpuCodec,parallelLabel,`${done} / ${total}`));
+    });
 
     // Make temp dir
-    setRP(2,'Creating temp dir…','');
+    setRP(20,'Creating temp dir…',buildRenderSub(20,activeGpuCodec,parallelLabel));
     const tmpDir=await window.electronAPI.makeTempDir();
 
     // Render frames
-    setRP(3,'Rendering frames…','');
+    setRP(21,'Rendering frames…',buildRenderSub(21,activeGpuCodec,parallelLabel));
     const FRAME_BATCH=20;
+    let lastFrameUiAt=Date.now();
+    let lastFrameUiIndex=0;
     let frameBatch=[];
-    const canvasToJpeg=()=>new Promise(r=>offscreen.toBlob(b=>b.arrayBuffer().then(ab=>r(new Uint8Array(ab))),'image/jpeg',0.92));
+    const canvasToJpeg=()=>new Promise(r=>offscreen.toBlob(b=>b.arrayBuffer().then(ab=>r(new Uint8Array(ab))),'image/jpeg',0.80));
     for(let f=0;f<totalFrames;f++){
-      const start=f*hopSize;const fakeData=new Uint8Array(128);
-      for(let b=0;b<90;b++){let sum=0,count=0;const step=Math.max(1,Math.floor(hopSize/90));for(let s=start+b*step;s<start+(b+1)*step&&s<cd.length;s++,count++)sum+=Math.abs(cd[s]||0);const amp=count>0?sum/count:0;fakeData[b]=Math.min(255,Math.round(amp*340*(1+Math.exp(-b/14))));}
+      const fakeData=analysisFrames[f];
       octx.clearRect(0,0,RW,RH);
       if(vImgBitmap){const sc=Math.max(RW/vImgBitmap.width,RH/vImgBitmap.height);const sw=vImgBitmap.width*sc,sh=vImgBitmap.height*sc;octx.drawImage(vImgBitmap,(RW-sw)/2,(RH-sh)/2,sw,sh);}
       const avg=fakeData.reduce((a,b)=>a+b,0)/fakeData.length/255;const bass=fakeData.slice(0,6).reduce((a,b)=>a+b,0)/6/255;
@@ -1323,33 +1451,58 @@ async function startRender(){
         await window.electronAPI.writeFramesBatch(tmpDir,frameBatch);
         frameBatch=[];
       }
-      setRP(3+(f/totalFrames)*67,'Rendering frames…',`${f+1} / ${totalFrames}`);
+      const now=Date.now();
+      const shouldUpdateUI=
+        f===totalFrames-1 ||
+        (f-lastFrameUiIndex)>=PROGRESS_FRAME_STEP ||
+        (now-lastFrameUiAt)>=PROGRESS_MIN_MS;
+      if(shouldUpdateUI){
+        const pct=21+(f/totalFrames)*50;
+        setRP(pct,'Rendering frames…',buildRenderSub(pct,activeGpuCodec,parallelLabel,`${f+1} / ${totalFrames}`));
+        lastFrameUiAt=now;
+        lastFrameUiIndex=f;
+      }
       if(f%10===0)await new Promise(r=>setTimeout(r,0));
     }
 
     // Write audio
-    setRP(71,'Writing audio…','');
+    setRP(71,'Writing audio…',buildRenderSub(71,activeGpuCodec,parallelLabel));
     const wavBlob=audioBufferToWav(vAudioBuffer);
     const wavArrayBuffer=await wavBlob.arrayBuffer();
     const audioPath=await window.electronAPI.writeAudio(tmpDir,wavArrayBuffer);
 
     // Encode with native FFmpeg
-    setRP(75,'Encoding with native FFmpeg…','This will be fast ⚡');
+    setRP(75,'Encoding with native FFmpeg…',buildRenderSub(75,activeGpuCodec,parallelLabel));
 
     // Listen for frame progress from FFmpeg
-    window.electronAPI.onRenderProgress(({frame})=>{
+    let lastEncUiAt=Date.now();
+    let lastEncUiFrame=0;
+    window.electronAPI.onRenderProgress(({frame, encoder, parallelRendering})=>{
       const pct=75+Math.min(20,(frame/totalFrames)*20);
-      setRP(pct,`Encoding… frame ${frame} / ${totalFrames}`,'Native FFmpeg ⚡');
+      if(encoder)activeGpuCodec=encoder;
+      const prLabel=parallelRendering===false?'Parallel I/O: OFF':parallelLabel;
+      const now=Date.now();
+      const shouldUpdateUI=
+        frame>=totalFrames ||
+        (frame-lastEncUiFrame)>=PROGRESS_FRAME_STEP ||
+        (now-lastEncUiAt)>=PROGRESS_MIN_MS;
+      if(shouldUpdateUI){
+        setRP(pct,`Encoding… frame ${frame} / ${totalFrames}`,buildRenderSub(pct,activeGpuCodec,prLabel));
+        lastEncUiAt=now;
+        lastEncUiFrame=frame;
+      }
     });
 
+    let renderResult;
     try{
-      await window.electronAPI.renderMp4({
+      renderResult = await window.electronAPI.renderMp4({
         framesDir:tmpDir,
         audioPath,
         outputPath:savePath,
         fps:FPS,
         width:RW,
-        height:RH
+        height:RH,
+        videoEncoder:'h264_nvenc'  // GPU-required path (no CPU fallback)
       });
     }catch(err){
       window.electronAPI.removeRenderProgressListener();
@@ -1362,7 +1515,9 @@ async function startRender(){
 
     window.electronAPI.removeRenderProgressListener();
     await window.electronAPI.cleanTempDir(tmpDir);
-    setRP(100,'Done!','Saved to '+savePath.split(/[\\/]/).pop());
+    if(renderResult?.encoder)activeGpuCodec=renderResult.encoder;
+    const prLabel=renderResult?.parallelRendering===false?'Parallel I/O: OFF':parallelLabel;
+    setRP(100,'Done!',buildRenderSub(100,activeGpuCodec,prLabel,`Saved to ${savePath.split(/[\\/]/).pop()}`));
     setTimeout(async()=>{
       document.getElementById('rOverlay').classList.remove('on');
       document.getElementById('renderBtn').disabled=false;
@@ -1382,11 +1537,15 @@ async function startRender(){
   offscreen.width=RW;offscreen.height=RH;
   offParts=Array.from({length:150},()=>new VSparkle());offDrops=[];
   const dur=vAudioBuffer.duration,totalFrames=Math.ceil(dur*FPS);
-  const sr=vAudioBuffer.sampleRate,cd=vAudioBuffer.getChannelData(0),hopSize=Math.floor(sr/FPS);
-  setRP(2,'Rendering frames…','');
+  setRP(2,'Analysing audio…','');
+  const analysisFrames=precomputeVisualAnalysisFrames(vAudioBuffer,totalFrames,FPS,(done,total)=>{
+    setRP(2+(done/total)*8,'Analysing audio…',`${done} of ${total}`);
+  });
+  setRP(10,'Rendering frames…','');
+  let lastWasmUiAt=Date.now();
+  let lastWasmUiFrame=0;
   for(let f=0;f<totalFrames;f++){
-    const start=f*hopSize;const fakeData=new Uint8Array(128);
-    for(let b=0;b<90;b++){let sum=0,count=0;const step=Math.max(1,Math.floor(hopSize/90));for(let s=start+b*step;s<start+(b+1)*step&&s<cd.length;s++,count++)sum+=Math.abs(cd[s]||0);const amp=count>0?sum/count:0;fakeData[b]=Math.min(255,Math.round(amp*340*(1+Math.exp(-b/14))));}
+    const fakeData=analysisFrames[f];
     octx.clearRect(0,0,RW,RH);
     if(vImgBitmap){const sc=Math.max(RW/vImgBitmap.width,RH/vImgBitmap.height);const sw=vImgBitmap.width*sc,sh=vImgBitmap.height*sc;octx.drawImage(vImgBitmap,(RW-sw)/2,(RH-sh)/2,sw,sh);}
     const avg=fakeData.reduce((a,b)=>a+b,0)/fakeData.length/255;const bass=fakeData.slice(0,6).reduce((a,b)=>a+b,0)/6/255;
@@ -1395,7 +1554,16 @@ async function startRender(){
     drawTitles(octx,RW,RH,f/FPS);drawLyrics(octx,RW,RH,f/FPS);
     const blob=await new Promise(res=>offscreen.toBlob(res,'image/png'));
     ffmpeg.FS('writeFile',`f${String(f).padStart(6,'0')}.png`,new Uint8Array(await blob.arrayBuffer()));
-    setRP(2+(f/totalFrames)*72,'Rendering frames…',`${f+1} of ${totalFrames}`);
+    const now=Date.now();
+    const shouldUpdateUI=
+      f===totalFrames-1 ||
+      (f-lastWasmUiFrame)>=PROGRESS_FRAME_STEP ||
+      (now-lastWasmUiAt)>=PROGRESS_MIN_MS;
+    if(shouldUpdateUI){
+      setRP(10+(f/totalFrames)*64,'Rendering frames…',`${f+1} of ${totalFrames}`);
+      lastWasmUiAt=now;
+      lastWasmUiFrame=f;
+    }
     if(f%8===0)await new Promise(r=>setTimeout(r,0));
   }
   setRP(75,'Writing audio…','');ffmpeg.FS('writeFile','audio_src',await fetchFile(vAudioFile));

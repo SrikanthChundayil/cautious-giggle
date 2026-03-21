@@ -4,6 +4,7 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('electronAPI', {
   // FFmpeg check
   checkFFmpeg: () => ipcRenderer.invoke('check-ffmpeg'),
+  checkGpuEncoder: () => ipcRenderer.invoke('check-gpu-encoder'),
 
   // File dialogs
   saveDialog: (opts) => ipcRenderer.invoke('save-dialog', opts),

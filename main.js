@@ -4,8 +4,7 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const os = require('os');
 
-// Fix black screen on Windows (GPU compositor issue)
-app.disableHardwareAcceleration();
+// Keep GPU acceleration enabled for faster canvas/render performance
 
 // Increase renderer V8 heap to prevent OOM crash on large audio files
 app.commandLine.appendSwitch('js-flags', '--max-old-space-size=4096');
@@ -28,7 +27,6 @@ function createWindow() {
     }
   });
   mainWindow.loadFile('src/index.html');
-  mainWindow.webContents.openDevTools(); // debug
 
   // Auto-reload on renderer crash instead of staying black
   mainWindow.webContents.on('render-process-gone', (event, details) => {
@@ -73,18 +71,24 @@ ipcMain.handle('render-mp4', async (event, opts) => {
       outputPath: string,   // where to save the mp4
       fps: number,
       width: number,
-      height: number
+      height: number,
+      videoEncoder: string  // 'h264_nvenc' (GPU) or 'libx264' (CPU), defaults to 'libx264'
     }
   */
   return new Promise((resolve, reject) => {
+    const gpuCodec = 'h264_nvenc';
+    let encoderUsed = gpuCodec;
+    const parallelRendering = true;
+
+    // Build FFmpeg args with required GPU encoder (no CPU fallback)
     const args = [
       '-y',
       '-framerate', String(opts.fps),
       '-i', path.join(opts.framesDir, 'f%06d.jpg'),
       '-i', opts.audioPath,
-      '-c:v', 'libx264',
-      '-preset', 'fast',   // much faster than ultrafast, still quick
-      '-crf', '18',
+      '-c:v', gpuCodec,
+      '-cq', '19',
+      '-preset', 'p5',
       '-c:a', 'aac',
       '-b:a', '192k',
       '-pix_fmt', 'yuv420p',
@@ -95,21 +99,71 @@ ipcMain.handle('render-mp4', async (event, opts) => {
 
     const proc = spawn('ffmpeg', args);
     let stderr = '';
+    let encoderDetected = false;
 
     proc.stderr.on('data', data => {
       stderr += data.toString();
+      
+      // Detect which encoder FFmpeg actually used
+      if (!encoderDetected) {
+        if (stderr.includes('h264_nvenc')) {
+          encoderUsed = 'h264_nvenc (GPU)';
+          encoderDetected = true;
+          event.sender.send('render-progress', {
+            frame: 0,
+            phase: 'encoding',
+            encoder: encoderUsed,
+            parallelRendering
+          });
+        }
+      }
+      
       // Parse progress from FFmpeg stderr: "frame=  120 fps= 45 …"
       const frameMatch = stderr.match(/frame=\s*(\d+)/g);
       if (frameMatch) {
         const lastFrame = parseInt(frameMatch[frameMatch.length - 1].replace('frame=', '').trim());
-        event.sender.send('render-progress', { frame: lastFrame, phase: 'encoding' });
+        event.sender.send('render-progress', {
+          frame: lastFrame,
+          phase: 'encoding',
+          encoder: encoderUsed,
+          parallelRendering
+        });
       }
     });
 
     proc.on('error', err => reject({ ok: false, msg: 'FFmpeg spawn error: ' + err.message }));
     proc.on('close', code => {
-      if (code === 0) resolve({ ok: true });
+      if (code === 0) resolve({ ok: true, encoder: encoderUsed, parallelRendering });
       else reject({ ok: false, msg: 'FFmpeg failed (exit ' + code + ')\n' + stderr.slice(-500) });
+    });
+  });
+});
+
+// ── CHECK GPU ENCODER AVAILABILITY ──────────────────────────
+ipcMain.handle('check-gpu-encoder', async () => {
+  return new Promise((resolve) => {
+    const proc = spawn('ffmpeg', ['-encoders']);
+    let stdout = '';
+    let stderr = '';
+
+    proc.stdout.on('data', data => {
+      stdout += data.toString();
+    });
+    proc.stderr.on('data', data => {
+      stderr += data.toString();
+    });
+
+    proc.on('close', () => {
+      const output = stdout + stderr;
+      const hasGpu = output.includes('h264_nvenc');
+      resolve({
+        gpu: hasGpu,
+        encoder: hasGpu ? 'h264_nvenc (GPU)' : 'Not available'
+      });
+    });
+
+    proc.on('error', () => {
+      resolve({ gpu: false, encoder: 'Not available' });
     });
   });
 });
@@ -126,10 +180,12 @@ ipcMain.handle('write-frame', async (_, { dir, index, dataUrl }) => {
 
 // ── WRITE FRAMES BATCH (fast path — JPEG binary, no base64) ──────────
 ipcMain.handle('write-frames-batch', async (_, { dir, frames }) => {
-  for (const { index, data } of frames) {
-    const fname = path.join(dir, 'f' + String(index).padStart(6, '0') + '.jpg');
-    fs.writeFileSync(fname, Buffer.from(data));
-  }
+  await Promise.all(
+    frames.map(({ index, data }) => {
+      const fname = path.join(dir, 'f' + String(index).padStart(6, '0') + '.jpg');
+      return fs.promises.writeFile(fname, Buffer.from(data));
+    })
+  );
   return true;
 });
 
