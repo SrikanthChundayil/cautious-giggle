@@ -1,50 +1,85 @@
-# Srikanth's Suite — Desktop Edition
+# Srikanth's Suite - Desktop Edition
 
-Stitch · Visualise · Export — with native FFmpeg rendering.
+## Purpose
+Srikanth's Suite is a local desktop tool for creators who need to stitch audio, design synchronized visualizers, and export final music videos quickly. The app exists to avoid browser limitations and provide faster, reliable native rendering with FFmpeg.
+
+## What This App Is Used For
+- Stitch multiple audio tracks into one timeline.
+- Tune per-track volume, fade in/out, trim, and gaps.
+- Send stitched audio directly into the Visualiser.
+- Add image background, particle layers, visualizer effects, title cues, and lyrics.
+- Export MP4 from desktop using native FFmpeg.
+
+## Current App Modules
+- Stitcher tab
+- Visualiser tab
+
+## Key Features (Latest)
+### Stitcher
+- Drag reorder tracks.
+- Per-track controls: volume, fade in, fade out, trim start, trim end, gap after.
+- Global gap control.
+- Track preview with seek.
+- Export stitched WAV.
+- Send to Visualiser flow.
+
+### Visualiser
+- Load background image and audio.
+- Real-time preview with play/pause and seek.
+- Particle layer + visualizer effect layer controls.
+- Separate particle intensity control.
+- Title cues with timestamp-based hold end.
+- Lyrics support:
+  - Tap Sync mode
+  - LRC input mode
+- Multiple output aspect/resolution presets.
+
+### Render / Export
+- Native FFmpeg pipeline from Electron main process.
+- JPEG frame batch write path for speed.
+- Progress overlay during rendering.
+
+Important: MP4 export is currently configured for NVIDIA NVENC (`h264_nvenc`) and has no CPU fallback in the current code path.
 
 ## Requirements
+- Node.js
+- FFmpeg available in system PATH
+- NVIDIA GPU + NVENC-capable FFmpeg for MP4 export in current build
 
-- Node.js (already installed)
-- FFmpeg in your system PATH
-
-### Install FFmpeg on Windows
-1. Download from https://ffmpeg.org/download.html → Windows builds → gyan.dev
-2. Extract the zip, copy the `bin` folder contents somewhere (e.g. `C:\ffmpeg\bin`)
-3. Add `C:\ffmpeg\bin` to your Windows PATH environment variable
-4. Verify: open a new terminal and run `ffmpeg -version`
-
-## Setup & Run
+### FFmpeg Setup on Windows
+1. Download FFmpeg from https://ffmpeg.org/download.html (Windows builds).
+2. Extract and place `bin` in a stable location (example: `C:\ffmpeg\bin`).
+3. Add that folder to Windows PATH.
+4. Verify in a new terminal:
 
 ```bash
-# 1. Install Electron (one time)
-npm install
+ffmpeg -version
+```
 
-# 2. Launch the app
+## Setup and Run
+```bash
+npm install
 npm start
 ```
 
-## Why desktop is faster
+## Typical Workflow
+1. Open Stitcher and import tracks.
+2. Adjust fades/volume/trims/gaps.
+3. Stitch and use Send to Visualiser.
+4. In Visualiser, set styles, titles, lyrics, and preview.
+5. Render MP4.
 
-| Method         | Engine          | Threads | Speed (1hr video) |
-|----------------|-----------------|---------|-------------------|
-| Browser wasm   | FFmpeg.wasm     | 1       | 2–3 hours         |
-| Desktop native | System FFmpeg   | All CPUs| 5–15 minutes      |
-
-## How rendering works
-
-1. Frames are rendered to an offscreen canvas at your chosen resolution
-2. Each PNG frame is sent to the main process and written to a temp folder
-3. Native FFmpeg reads the frames + WAV audio and encodes to MP4
-4. Output file is saved directly to your chosen location — no browser download needed
-5. Temp folder is cleaned up automatically
-
-## Files
-
-```
+## Project Structure
+```text
 srikanth-suite-desktop/
-  main.js        — Electron main process (FFmpeg, file I/O)
-  preload.js     — Secure IPC bridge
-  package.json   — Dependencies
+  main.js                   - Electron main process (FFmpeg, file I/O, GPU encode path)
+  preload.js                - IPC bridge
+  package.json              - Project metadata/scripts
   src/
-    index.html   — The full suite (same as browser version)
+    index.html              - Main UI and renderer logic (Stitcher + Visualiser)
+    audio-decoder.worker.js - Audio decode worker
 ```
+
+## Notes
+- Desktop native rendering is substantially faster than browser WASM workflows.
+- If `h264_nvenc` is unavailable, MP4 export will fail in the current implementation.
