@@ -29,6 +29,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;opa
 .btn-ac:hover{background:rgba(200,240,96,.18);}.btn-ac:disabled{opacity:.3;cursor:not-allowed;}
 .btn-gh{background:none;border:0.5px solid var(--b);color:var(--mu);font-family:var(--mono);font-size:11px;padding:5px 12px;border-radius:20px;cursor:pointer;transition:border-color .15s,color .15s;white-space:nowrap;}
 .btn-gh:hover{border-color:var(--bh);color:var(--tx);}
+.btn-gh.active{border-color:rgba(200,240,96,.45);color:var(--ac);background:rgba(200,240,96,.12);}
 .btn-big{flex:1;background:var(--ac);border:none;color:#0c0c0f;font-family:var(--mono);font-size:12px;font-weight:500;padding:13px;border-radius:8px;cursor:pointer;letter-spacing:.1em;text-transform:uppercase;transition:opacity .15s,transform .1s;}
 .btn-big:hover:not(:disabled){opacity:.88;transform:translateY(-1px);}.btn-big:disabled{opacity:.25;cursor:not-allowed;transform:none;}
 .btn-send{background:rgba(200,240,96,.1);border:0.5px solid rgba(200,240,96,.3);color:var(--ac);font-family:var(--mono);font-size:11px;padding:13px 16px;border-radius:8px;cursor:pointer;white-space:nowrap;}
@@ -100,7 +101,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;heigh
 .cue-row{display:flex;align-items:center;gap:7px;background:var(--s2);border:0.5px solid var(--b);border-radius:6px;padding:8px 11px;}
 .cue-time{font-family:var(--mono);font-size:12px;color:var(--ac);width:48px;flex-shrink:0;background:none;border:none;outline:none;text-align:center;}
 .cue-text{flex:1;font-size:13px;color:var(--tx);background:none;border:none;outline:none;}
-.cue-dur{font-family:var(--mono);font-size:11px;color:var(--mu);width:42px;background:none;border:none;outline:none;text-align:center;}
+.cue-dur{font-family:var(--mono);font-size:11px;color:var(--mu);width:68px;background:none;border:none;outline:none;text-align:center;}
 .cue-del{background:none;border:none;color:var(--mu);cursor:pointer;font-size:14px;padding:2px 4px;}
 .cue-del:hover{color:var(--dn);}
 .cue-hdr{display:flex;gap:7px;padding:4px 11px 0;font-family:var(--mono);font-size:10px;color:rgba(240,237,232,.2);}
@@ -271,9 +272,9 @@ textarea:focus{border-color:rgba(200,240,96,.35);}
     <div class="sbar">
       <div class="sg"><span class="sl">Colour</span>
         <div style="display:flex;align-items:center;gap:7px;">
-          <div class="swatch-box"><input type="color" id="themeColor" value="#ffffff" oninput="applyTheme(this.value)" style="display:block;width:100%;height:100%;border:none;padding:0;cursor:pointer;background:none;"/></div>
-          <button class="btn-gh" style="padding:4px 10px;font-size:10px;" onclick="applyTheme('#ffffff')">⬜ White</button>
-          <button class="btn-gh" style="padding:4px 10px;font-size:10px;border-color:rgba(255,200,80,.3);color:rgba(255,200,80,.8);" onclick="applyTheme('#ffc850')">✦ Golden</button>
+          <div class="swatch-box"><div class="swatch-inner" id="themeSwatch"></div><input type="color" id="themeColor" value="#ffffff" oninput="applyTheme(this.value)" style="display:block;width:100%;height:100%;border:none;padding:0;cursor:pointer;background:none;"/></div>
+          <button class="btn-gh active" id="themeWhiteBtn" style="padding:4px 10px;font-size:10px;" onclick="applyTheme('#ffffff')">⬜ White</button>
+          <button class="btn-gh" id="themeGoldenBtn" style="padding:4px 10px;font-size:10px;border-color:rgba(255,200,80,.3);color:rgba(255,200,80,.8);" onclick="applyTheme('#ffc850')">✦ Golden</button>
         </div>
       </div>
       <div class="sg"><span class="sl">Font</span>
@@ -319,6 +320,9 @@ textarea:focus{border-color:rgba(200,240,96,.35);}
     <div class="card-hdr" onclick="toggleCard('card-particle')">
       <span class="card-title">Particle Layer</span>
       <div style="display:flex;align-items:center;gap:8px;">
+        <span class="sl">Particle Intensity</span>
+        <input type="range" id="vParticleIntSlider" min="0.2" max="2.5" step="0.1" value="1" style="width:70px" onclick="event.stopPropagation()" oninput="event.stopPropagation();vParticleIntensity=parseFloat(this.value);document.getElementById('vParticleIntVal').textContent=parseFloat(this.value).toFixed(1)+'×'"/>
+        <span class="rv" id="vParticleIntVal">1.0×</span>
         <span style="font-family:var(--mono);font-size:10px;color:var(--mu)">Mix with any effect below</span>
         <span class="collapse-arrow">▾</span>
       </div>
@@ -376,7 +380,7 @@ textarea:focus{border-color:rgba(200,240,96,.35);}
       </div>
     </div>
     <div class="card-body">
-    <div class="cue-hdr"><span style="width:48px;text-align:center">Time</span><span style="flex:1">Title</span><span style="width:42px;text-align:center">Hold</span><span style="width:20px"></span></div>
+    <div class="cue-hdr"><span style="width:48px;text-align:center">Time</span><span style="flex:1">Title</span><span style="width:68px;text-align:center">Hold End</span><span style="width:20px"></span></div>
     <div id="cueList"></div>
     </div><!-- end card-body -->
   </div>
@@ -409,7 +413,7 @@ textarea:focus{border-color:rgba(200,240,96,.35);}
           5. After last line — one more <b>Space</b> marks quando lyrics hide (outro)<br>
           6. Press <b>✓ Done</b> to publish
         </div>
-        <textarea id="tapRawInput" placeholder="तेरी याद आई&#10;चुपके से रात में&#10;दिल ने पुकारा" rows="4" oninput="loadTapLines()"></textarea>
+        <textarea id="tapRawInput" placeholder="First line&#10;Second line&#10;Third line" rows="4" oninput="loadTapLines()"></textarea>
         <div class="tap-actions">
           <button class="btn-ac" id="tapStartBtn" onclick="startTapMode()">▶ Start Tap Mode</button>
           <button class="btn-gh" id="tapDoneBtn" onclick="finishTapSync()" style="display:none">✓ Done</button>
@@ -424,7 +428,7 @@ textarea:focus{border-color:rgba(200,240,96,.35);}
         <div style="font-family:var(--mono);font-size:10px;color:var(--mu);margin-bottom:8px;line-height:1.9;padding:9px 12px;background:var(--s2);border-radius:6px;border-left:2px solid var(--ac)">
           Find LRC at <span style="color:var(--ac)">lrclib.net</span> · Format: <span style="color:var(--ac)">[mm:ss.xx] lyric line</span> · Metadata auto-ignored
         </div>
-        <textarea id="lrcInput" placeholder="[00:00.00] तेरी याद आई&#10;[00:04.50] चुपके से रात में" oninput="parseLRC()"></textarea>
+        <textarea id="lrcInput" placeholder="[00:00.00] First line&#10;[00:04.50] Second line" oninput="parseLRC()"></textarea>
         <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
           <span style="font-family:var(--mono);font-size:11px;color:var(--mu)" id="lrcCount">0 lines</span>
           <button class="btn-gh" onclick="clearLRC()">Clear</button>
@@ -493,7 +497,20 @@ window.onunhandledrejection = function(e) {
 function fmtTime(s){if(!s||isNaN(s)||s<0)return'0:00';return`${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`;}
 function fmtLRC(s){const m=Math.floor(s/60),sc=Math.floor(s%60),cs=Math.round((s%1)*100);return`[${String(m).padStart(2,'0')}:${String(sc).padStart(2,'0')}.${String(cs).padStart(2,'0')}]`;}
 function fmtSize(b){return b<1048576?(b/1024).toFixed(0)+' KB':(b/1048576).toFixed(1)+' MB';}
-function parseTS(str){str=(str||'').trim();const p=str.split(':');return p.length===2?parseInt(p[0])*60+parseFloat(p[1]):parseFloat(str)||0;}
+function parseTS(str){
+  str=(str||'').trim();if(!str)return 0;
+  const p=str.split(':').map(s=>s.trim());
+  if(p.length===3){
+    const h=parseInt(p[0],10),m=parseInt(p[1],10),s=parseFloat(p[2]);
+    if(Number.isFinite(h)&&Number.isFinite(m)&&Number.isFinite(s))return h*3600+m*60+s;
+  }
+  if(p.length===2){
+    const m=parseInt(p[0],10),s=parseFloat(p[1]);
+    if(Number.isFinite(m)&&Number.isFinite(s))return m*60+s;
+  }
+  const v=parseFloat(str);
+  return Number.isFinite(v)?v:0;
+}
 function hexToRGB(h){return[parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];}
 
 function switchTab(n){
@@ -576,13 +593,34 @@ async function sLoadFiles(files){
 function sGetDur(f){return new Promise(r=>{const u=URL.createObjectURL(f);const a=new Audio(u);a.addEventListener('loadedmetadata',()=>{URL.revokeObjectURL(u);r(a.duration);});a.addEventListener('error',()=>{URL.revokeObjectURL(u);r(0);});});}
 function sEffDur(t){return Math.max(0,t.duration-t.trimStart-t.trimEnd);}
 function sMiniWave(seed){let h=[];for(let i=0;i<14;i++)h.push(Math.round(4+Math.abs(Math.sin(seed*3.7+i*1.3)*14)));return h.map(v=>`<span style="height:${v}px"></span>`).join('');}
+function sBuildTimeline(){
+  const globalGap=Math.max(0,parseFloat(document.getElementById('globalGap').value)||0);
+  let cursor=0;
+  const items=sTracks.map((t,i)=>{
+    const trimStart=Math.max(0,t.trimStart||0);
+    const trimEnd=Math.max(0,t.trimEnd||0);
+    const effective=Math.max(0,(t.duration||0)-trimStart-trimEnd);
+    const item={
+      index:i,
+      start:cursor,
+      trimStart,
+      trimEnd,
+      effective,
+      gapAfter:Math.max(0,t.gapAfter||0),
+      globalGap:i<sTracks.length-1?globalGap:0
+    };
+    cursor+=effective+item.gapAfter+item.globalGap;
+    return item;
+  });
+  return{items,totalDuration:cursor};
+}
 
 function updateStats(){
   if(sTracks.length===0){document.getElementById('statsBar').classList.remove('visible');document.getElementById('gapRow').classList.remove('visible');return;}
   document.getElementById('statsBar').classList.add('visible');document.getElementById('gapRow').classList.add('visible');document.getElementById('hintRow').classList.add('visible');
-  const gap=parseFloat(document.getElementById('globalGap').value);
   const totalDur=sTracks.reduce((a,t)=>a+sEffDur(t),0);
-  const totalWithGap=totalDur+gap*Math.max(0,sTracks.length-1);
+  const timeline=sBuildTimeline();
+  const totalWithGap=timeline.totalDuration;
   document.getElementById('statTracks').textContent=sTracks.length;
   document.getElementById('statDur').textContent=fmtTime(totalDur);
   document.getElementById('statGapDur').textContent=fmtTime(totalWithGap);
@@ -616,14 +654,101 @@ function sRender(soft){
 }
 
 function sTogglePanel(i){sTracks[i].open=!sTracks[i].open;const p=document.getElementById(`spanel-${i}`);if(p)p.classList.toggle('open',sTracks[i].open);}
-function sUpdateTrack(i,k,v){sTracks[i][k]=parseFloat(v);updateStats();}
+function sUpdateTrack(i,k,v){
+  sTracks[i][k]=parseFloat(v);
+  if(sPreviewIdx===i&&sPreviewAudio){
+    if(k==='volume'&&sPreviewAudio.gain){
+      const vol=Math.max(0,sTracks[i].volume||0);
+      sPreviewAudio.gain.gain.cancelScheduledValues(sPreviewAudio.ctx.currentTime);
+      sPreviewAudio.gain.gain.setValueAtTime(vol,sPreviewAudio.ctx.currentTime);
+    }
+    if(k==='trimStart'||k==='trimEnd'||k==='fadeIn'||k==='fadeOut'){
+      const cur=sGetPreviewCurrentTime();
+      const wasPaused=!!sPreviewAudio.paused;
+      sStartTrackPreview(i,cur,wasPaused);
+    }
+  }
+  updateStats();
+}
 function sSliderUpdate(el,i,k,fmt){sUpdateTrack(i,k,el.value);if(el.nextElementSibling)el.nextElementSibling.textContent=fmt(el.value);}
 function sRemoveTrack(i){sStopPreview();URL.revokeObjectURL(sTracks[i].url);sTracks.splice(i,1);sRender();}
 function clearAll(){sStopPreview();sTracks.forEach(t=>URL.revokeObjectURL(t.url));sTracks=[];document.getElementById('sDlWrap').classList.remove('visible');document.getElementById('sProgWrap').classList.remove('visible');document.getElementById('hintRow').classList.remove('visible');stitchedBlob=null;document.getElementById('sendToVisBtn').disabled=true;sRender();}
 
 // Stitcher preview
+function sGetPreviewCtx(){if(!window.__sPreviewCtx)window.__sPreviewCtx=new(window.AudioContext||window.webkitAudioContext)();return window.__sPreviewCtx;}
+function sPCMToAudioBuffer(ctx,res){
+  const nc=res.numberOfChannels||2,sr=res.sampleRate||44100;
+  const floats=new Float32Array(res.buffer);const len=Math.floor(floats.length/nc);
+  const audioBuf=ctx.createBuffer(nc,len,sr);
+  for(let ch=0;ch<nc;ch++){
+    const cd=audioBuf.getChannelData(ch);
+    for(let s=0;s<len;s++)cd[s]=floats[s*nc+ch];
+  }
+  return audioBuf;
+}
+async function sEnsurePreviewBuffer(i){
+  const t=sTracks[i];if(t._previewBuffer)return t._previewBuffer;
+  const ab=await t.file.arrayBuffer();
+  const res=await window.electronAPI.decodeAudioPCM(new Uint8Array(ab),t.file.name);
+  if(!res.ok)throw new Error(`Failed to decode "${t.name}": ${res.error}`);
+  t._previewBuffer=sPCMToAudioBuffer(sGetPreviewCtx(),res);
+  return t._previewBuffer;
+}
+function sGetPreviewCurrentTime(){
+  if(!sPreviewAudio)return 0;
+  if(sPreviewAudio.paused)return sPreviewAudio.pauseOffset;
+  return sPreviewAudio.startOffset+(sPreviewAudio.ctx.currentTime-sPreviewAudio.startedAt);
+}
+function sApplyPreviewEnvelope(gain,ctx,t,trimStart,effective,startOffset){
+  const vol=Math.max(0,t.volume||0);
+  const fadeIn=Math.max(0,Math.min(t.fadeIn||0,effective));
+  const fadeOut=Math.max(0,Math.min(t.fadeOut||0,effective));
+  const relOffset=Math.max(0,startOffset-trimStart);
+  gain.gain.cancelScheduledValues(ctx.currentTime);
+  let nowVol=vol;
+  if(fadeIn>0&&relOffset<fadeIn)nowVol=vol*(relOffset/fadeIn);
+  if(fadeOut>0){
+    const fadeOutStart=Math.max(0,effective-fadeOut);
+    if(relOffset>=fadeOutStart)nowVol=Math.min(nowVol,vol*Math.max(0,(effective-relOffset)/fadeOut));
+  }
+  gain.gain.setValueAtTime(nowVol,ctx.currentTime);
+  if(fadeIn>0&&relOffset<fadeIn){
+    gain.gain.linearRampToValueAtTime(vol,ctx.currentTime+(fadeIn-relOffset));
+  }
+  if(fadeOut>0){
+    const fadeOutStart=Math.max(0,effective-fadeOut);
+    if(relOffset<fadeOutStart){
+      gain.gain.setValueAtTime(vol,ctx.currentTime+(fadeOutStart-relOffset));
+      gain.gain.linearRampToValueAtTime(0,ctx.currentTime+(effective-relOffset));
+    }else{
+      gain.gain.linearRampToValueAtTime(0,ctx.currentTime+Math.max(0,effective-relOffset));
+    }
+  }
+}
+async function sStartTrackPreview(i,requestedOffset,pausedStart){
+  const t=sTracks[i],ctx=sGetPreviewCtx();
+  const buf=await sEnsurePreviewBuffer(i);
+  if(ctx.state==='suspended')await ctx.resume();
+  const trimStart=Math.max(0,t.trimStart||0),trimEnd=Math.max(0,t.trimEnd||0);
+  const trackEnd=Math.max(trimStart,buf.duration-trimEnd);
+  const effective=Math.max(0,trackEnd-trimStart);
+  const offset=Math.max(trimStart,Math.min(requestedOffset??trimStart,trackEnd));
+  sStopPreview();sPreviewIdx=i;
+  const gain=ctx.createGain();const source=ctx.createBufferSource();source.buffer=buf;source.connect(gain);gain.connect(ctx.destination);
+  sApplyPreviewEnvelope(gain,ctx,t,trimStart,effective,offset);
+  const playDur=Math.max(0,trackEnd-offset);
+  sPreviewAudio={ctx,source,gain,paused:!!pausedStart,startOffset:offset,pauseOffset:offset,startedAt:ctx.currentTime,trimStart,trackEnd,effective};
+  source.onended=()=>{if(sPreviewAudio&&sPreviewAudio.source===source&&!sPreviewAudio.paused)sStopPreview();};
+  if(!pausedStart){
+    source.start(ctx.currentTime,offset,playDur);
+    sPreviewAudio.startedAt=ctx.currentTime;
+  }
+  sRender(true);
+  sStartPreviewTick(i);
+}
 function sStopPreview(){
-  if(sPreviewAudio){sPreviewAudio.pause();sPreviewAudio=null;}
+  if(sPreviewAudio&&sPreviewAudio.source){try{sPreviewAudio.source.onended=null;sPreviewAudio.source.stop();}catch(_){}}
+  sPreviewAudio=null;
   if(sPreviewInterval){clearInterval(sPreviewInterval);sPreviewInterval=null;}
   const prev=sPreviewIdx;sPreviewIdx=-1;
   if(prev>=0&&sTracks[prev]){
@@ -632,26 +757,43 @@ function sStopPreview(){
   }
   sRender(true);
 }
-function sPausePreview(){if(sPreviewAudio&&!sPreviewAudio.paused)sPreviewAudio.pause();sRender(true);}
-function sResumePreview(){if(sPreviewAudio&&sPreviewAudio.paused)sPreviewAudio.play();sRender(true);}
-function sSeekPreview(i,val){const sv=document.getElementById(`ssbv-${i}`);if(sv)sv.textContent=fmtTime(parseFloat(val));if(sPreviewIdx===i&&sPreviewAudio)sPreviewAudio.currentTime=parseFloat(val);}
+function sPausePreview(){
+  if(!sPreviewAudio||sPreviewAudio.paused)return;
+  sPreviewAudio.pauseOffset=sGetPreviewCurrentTime();
+  sPreviewAudio.paused=true;
+  try{sPreviewAudio.source.onended=null;sPreviewAudio.source.stop();}catch(_){ }
+  sRender(true);
+}
+function sResumePreview(){
+  if(sPreviewIdx<0||!sTracks[sPreviewIdx])return;
+  const startAt=sPreviewAudio?sPreviewAudio.pauseOffset:sTracks[sPreviewIdx].trimStart;
+  sStartTrackPreview(sPreviewIdx,startAt,false).catch(e=>{console.error('Preview resume failed',e);alert('Preview failed: '+(e.message||e));sStopPreview();});
+}
+function sSeekPreview(i,val){
+  const t=sTracks[i],v=parseFloat(val);
+  const min=t.trimStart||0,max=Math.max(min,t.duration-(t.trimEnd||0));
+  const target=Math.max(min,Math.min(v,max));
+  const sv=document.getElementById(`ssbv-${i}`);if(sv)sv.textContent=fmtTime(target);
+  if(sPreviewIdx===i&&sPreviewAudio){
+    const paused=sPreviewAudio.paused;
+    sStartTrackPreview(i,target,paused).catch(e=>{console.error('Preview seek failed',e);sStopPreview();});
+  }
+}
 function sStartPreviewTick(i){
   if(sPreviewInterval)clearInterval(sPreviewInterval);
   const t=sTracks[i];const endTime=t.duration-(t.trimEnd||0);
   sPreviewInterval=setInterval(()=>{
     if(!sPreviewAudio)return;
-    const cur=sPreviewAudio.currentTime;const elapsed=cur-(t.trimStart||0);const dur=sEffDur(t);
+    const cur=sGetPreviewCurrentTime();const elapsed=cur-(t.trimStart||0);const dur=sEffDur(t);
     const te=document.getElementById(`sptime-${i}`);const sb=document.getElementById(`ssb-${i}`);const sv=document.getElementById(`ssbv-${i}`);
     if(te)te.textContent=fmtTime(Math.max(0,elapsed))+' / '+fmtTime(dur);
     if(sb&&!sb.matches(':active'))sb.value=cur;if(sv&&!sb.matches(':active'))sv.textContent=fmtTime(cur);
-    if(cur>=endTime||sPreviewAudio.ended)sStopPreview();
+    if(cur>=endTime)sStopPreview();
   },80);
 }
-function sTogglePreview(i){
+async function sTogglePreview(i){
   if(sPreviewIdx===i){if(sPreviewAudio&&!sPreviewAudio.paused){sPausePreview();return;}if(sPreviewAudio&&sPreviewAudio.paused){sResumePreview();return;}}
-  sStopPreview();sPreviewIdx=i;const t=sTracks[i];const audio=new Audio();audio.volume=Math.min(1,t.volume||1);sPreviewAudio=audio;
-  audio.addEventListener('canplay',()=>{audio.currentTime=parseFloat(t.trimStart)||0;const p=audio.play();if(p)p.catch(e=>console.warn(e));sRender(true);sStartPreviewTick(i);},{once:true});
-  audio.src=t.url;audio.load();sRender(true);
+  try{await sStartTrackPreview(i,(sTracks[i].trimStart||0),false);}catch(e){console.error('Preview failed',e);alert('Preview failed: '+(e.message||e));sStopPreview();}
 }
 
 // Drag reorder
@@ -694,7 +836,7 @@ async function stitch(){
   let tmpCtx=null;
 
   try{
-    const gap=parseFloat(document.getElementById('globalGap').value);
+    const timeline=sBuildTimeline();
     const buffers=[];
 
     // Decode all tracks via ffmpeg (bypasses Chrome codec crash)
@@ -711,16 +853,10 @@ async function stitch(){
     await new Promise(r=>setTimeout(r,0));
 
     const sr=44100; const nc=2; // matches ffmpeg output
-    let totalSamples=0;
-    const startTimes=[];
+    const totalSamples=Math.max(1,Math.ceil(timeline.totalDuration*sr));
     for(let i=0;i<sTracks.length;i++){
-      startTimes.push(totalSamples/sr);
-      const t=sTracks[i];
       const len=Math.floor(new Float32Array(buffers[i].buffer).length/nc);
       buffers[i]._len=len;
-      const effLen=Math.max(0,len-Math.floor(t.trimStart*sr)-Math.floor(t.trimEnd*sr));
-      totalSamples+=effLen;
-      totalSamples+=Math.floor(((t.gapAfter||0)+(i<sTracks.length-1?gap:0))*sr);
     }
 
     setSP(55,'Mixing…');
@@ -743,7 +879,7 @@ async function stitch(){
       const gain=offCtx.createGain();
       source.connect(gain);gain.connect(offCtx.destination);
       const effDur=Math.max(0,audioBuf.duration-t.trimStart-t.trimEnd);
-      const st=startTimes[i],et=st+effDur;
+      const st=timeline.items[i].start,et=st+effDur;
       if(t.fadeIn>0){gain.gain.setValueAtTime(0,st);gain.gain.linearRampToValueAtTime(t.volume,st+t.fadeIn);}else{gain.gain.setValueAtTime(t.volume,st);}
       if(t.fadeOut>0&&et-t.fadeOut>st){gain.gain.setValueAtTime(t.volume,et-t.fadeOut);gain.gain.linearRampToValueAtTime(0,et);}
       source.start(st,t.trimStart,effDur);
@@ -787,7 +923,7 @@ function sendToVis(){
   if(!stitchedFile)return;
   switchTab('vis');
   setTimeout(async()=>{
-    cancelAnimationFrame(vAnimId);vAnimId=null;
+    vResetLoadedAudio();
     try{
       if(!vAudioCtx)vAudioCtx=new(window.AudioContext||window.webkitAudioContext)();
       vAudioBuffer=await decodeAudioFile(stitchedFile);
@@ -867,6 +1003,11 @@ function applyTheme(hex){
   const v=hex.replace('#','');
   themeRGB=[parseInt(v.slice(0,2),16),parseInt(v.slice(2,4),16),parseInt(v.slice(4,6),16)];
   document.getElementById('themeColor').value=hex;
+  const sw=document.getElementById('themeSwatch');if(sw)sw.style.background=hex;
+  const whiteBtn=document.getElementById('themeWhiteBtn');
+  const goldBtn=document.getElementById('themeGoldenBtn');
+  if(whiteBtn)whiteBtn.classList.toggle('active',hex.toLowerCase()==='#ffffff');
+  if(goldBtn)goldBtn.classList.toggle('active',hex.toLowerCase()==='#ffc850');
   if(!vWarmMode){
     if(typeof vSparkles!=='undefined') vSparkles.forEach(s=>s.recolour());
     if(typeof vFireflies!=='undefined') vFireflies.forEach(f=>f.reset(false));
@@ -878,6 +1019,8 @@ let vCurrentParticle='sparkles';
 let vCurrentEffect='corner_bars';
 let vWarmMode=true;
 let vIntensity=1;
+let vParticleIntensity=1;
+applyTheme('#ffffff');
 
 function setVParticle(id,el){
   vCurrentParticle=id;
@@ -903,36 +1046,36 @@ class VSparkle{
   constructor(){this.reset(true);}
   reset(init){this.x=Math.random();this.y=init?Math.random():1.05;this.baseSize=Math.random()*3.2+0.8;this.vy=-(Math.random()*0.0005+0.0001);this.vx=(Math.random()-0.5)*0.0002;this.life=Math.random()*0.6+0.2;this.decay=Math.random()*0.002+0.0005;this.twinkle=Math.random()*Math.PI*2;this.twinkleSpeed=Math.random()*0.08+0.02;this.glowing=Math.random()>0.65;this.recolour();}
   recolour(){const warm=[[255,248,200],[255,235,160],[255,220,120],[255,200,80],[255,255,220]];const base=warm[Math.floor(Math.random()*warm.length)];if(vWarmMode){this.rgb=base;}else{const v=0.85+Math.random()*.3;this.rgb=[Math.min(255,Math.round(themeRGB[0]*v)),Math.min(255,Math.round(themeRGB[1]*v)),Math.min(255,Math.round(themeRGB[2]*v))];}}
-  update(e){if(Math.random()<.008)this.recolour();const b=1+e*4*vIntensity;this.y+=this.vy*b;this.x+=this.vx*(1+e*2);this.life-=this.decay*(.4+e*.8);this.twinkle+=this.twinkleSpeed;if(this.life<=0||this.y<-.05)this.reset(false);}
-  draw(c,W,H,e){const op=this.life*(Math.sin(this.twinkle)*.35+.65)*(.5+e*.5);const[r,g,b]=this.rgb;const px=this.x*W,py=this.y*H,rs=getResolutionScale(W),sz=(this.baseSize+e*3.2*vIntensity)*rs;if(this.glowing){const gr=c.createRadialGradient(px,py,0,px,py,sz*4);gr.addColorStop(0,`rgba(${r},${g},${b},${op*.45})`);gr.addColorStop(1,`rgba(${r},${g},${b},0)`);c.beginPath();c.arc(px,py,sz*4,0,Math.PI*2);c.fillStyle=gr;c.fill();}c.beginPath();c.arc(px,py,sz,0,Math.PI*2);c.fillStyle=`rgba(${r},${g},${b},${Math.min(1,op)})`;c.fill();if(this.glowing&&op>.25){c.strokeStyle=`rgba(${r},${g},${b},${op*.5})`;c.lineWidth=0.7*rs;const arm=sz*2.5;c.beginPath();c.moveTo(px-arm,py);c.lineTo(px+arm,py);c.stroke();c.beginPath();c.moveTo(px,py-arm);c.lineTo(px,py+arm);c.stroke();}}
+  update(e){if(Math.random()<.008)this.recolour();const b=1+e*4*vParticleIntensity;this.y+=this.vy*b;this.x+=this.vx*(1+e*2);this.life-=this.decay*(.4+e*.8);this.twinkle+=this.twinkleSpeed;if(this.life<=0||this.y<-.05)this.reset(false);}
+  draw(c,W,H,e){const op=this.life*(Math.sin(this.twinkle)*.35+.65)*(.5+e*.5);const[r,g,b]=this.rgb;const px=this.x*W,py=this.y*H,rs=getResolutionScale(W),sz=(this.baseSize+e*3.2*vParticleIntensity)*rs;if(this.glowing){const gr=c.createRadialGradient(px,py,0,px,py,sz*4);gr.addColorStop(0,`rgba(${r},${g},${b},${op*.45})`);gr.addColorStop(1,`rgba(${r},${g},${b},0)`);c.beginPath();c.arc(px,py,sz*4,0,Math.PI*2);c.fillStyle=gr;c.fill();}c.beginPath();c.arc(px,py,sz,0,Math.PI*2);c.fillStyle=`rgba(${r},${g},${b},${Math.min(1,op)})`;c.fill();if(this.glowing&&op>.25){c.strokeStyle=`rgba(${r},${g},${b},${op*.5})`;c.lineWidth=0.7*rs;const arm=sz*2.5;c.beginPath();c.moveTo(px-arm,py);c.lineTo(px+arm,py);c.stroke();c.beginPath();c.moveTo(px,py-arm);c.lineTo(px,py+arm);c.stroke();}}
 }
 // ── FIREFLIES ─────────────────────────────────────────
 class VFirefly{
   constructor(){this.reset(true);}
   reset(init){this.x=Math.random();this.y=init?Math.random():.1+Math.random()*.85;this.size=Math.random()*4.5+2.0;this.vx=(Math.random()-.5)*0.00018;this.vy=(Math.random()-.5)*0.00012;this.phase=Math.random()*Math.PI*2;this.phaseSpeed=Math.random()*.018+.008;const warm=[[255,240,150],[255,220,100],[255,200,80],[255,235,170],[240,200,60]];const base=warm[Math.floor(Math.random()*warm.length)];if(vWarmMode){this.rgb=base;}else{const v=0.85+Math.random()*.3;this.rgb=[Math.min(255,Math.round(themeRGB[0]*v)),Math.min(255,Math.round(themeRGB[1]*v)),Math.min(255,Math.round(themeRGB[2]*v))];}}
-  update(e){this.x+=this.vx*(1+e*vIntensity);this.y+=this.vy*(1+e*vIntensity);this.phase+=this.phaseSpeed;if(this.x<-.05||this.x>1.05||this.y<-.05||this.y>1.05)this.reset(false);}
-  draw(c,W,H,e){const[r,g,b]=this.rgb;const p=Math.sin(this.phase)*.4+.6;const op=p*(.35+e*.25)*vIntensity;const px=this.x*W,py=this.y*H,rs=getResolutionScale(W),sz=this.size*rs;const gr=c.createRadialGradient(px,py,0,px,py,sz*5);gr.addColorStop(0,`rgba(${r},${g},${b},${op})`);gr.addColorStop(1,`rgba(${r},${g},${b},0)`);c.beginPath();c.arc(px,py,sz*5,0,Math.PI*2);c.fillStyle=gr;c.fill();c.beginPath();c.arc(px,py,sz,0,Math.PI*2);c.fillStyle=`rgba(${r},${g},${b},${op})`;c.fill();}
+  update(e){this.x+=this.vx*(1+e*vParticleIntensity);this.y+=this.vy*(1+e*vParticleIntensity);this.phase+=this.phaseSpeed;if(this.x<-.05||this.x>1.05||this.y<-.05||this.y>1.05)this.reset(false);}
+  draw(c,W,H,e){const[r,g,b]=this.rgb;const p=Math.sin(this.phase)*.4+.6;const op=p*(.35+e*.25)*vParticleIntensity;const px=this.x*W,py=this.y*H,rs=getResolutionScale(W),sz=this.size*rs;const gr=c.createRadialGradient(px,py,0,px,py,sz*5);gr.addColorStop(0,`rgba(${r},${g},${b},${op})`);gr.addColorStop(1,`rgba(${r},${g},${b},0)`);c.beginPath();c.arc(px,py,sz*5,0,Math.PI*2);c.fillStyle=gr;c.fill();c.beginPath();c.arc(px,py,sz,0,Math.PI*2);c.fillStyle=`rgba(${r},${g},${b},${op})`;c.fill();}
 }
 // ── WATER DROPS ───────────────────────────────────────
 class VWaterDrop{
   constructor(gx,gy){this.gx=gx;this.gy=gy;this.reset(true);}
   reset(init){this.x=this.gx+(Math.random()-.5)*0.09;this.y=this.gy+(Math.random()-.5)*0.09;this.r=init?Math.random()*0.022:0;this.maxR=0.022+Math.random()*0.018;this.life=init?Math.random():1;this.decay=0.003+Math.random()*0.002;this.expansion=0.00055+Math.random()*0.0003;this.aspect=0.22+Math.random()*0.10;this.delay=init?0:Math.floor(Math.random()*60);}
-  update(bass){if(this.delay>0){this.delay--;return;}this.r+=this.expansion*(1+bass*vIntensity*0.25);this.life-=this.decay;if(this.life<=0||this.r>this.maxR+0.003)this.reset(false);}
-  draw(c,W,H){if(this.delay>0||this.r<0.001)return;const[r,g,b]=themeRGB;const rx=this.r*W;const fade=Math.max(0,1-this.r/this.maxR*.85);const rs=getResolutionScale(W);[[1.0,.18],[0.55,.14],[0.22,.22]].forEach(([sc,op])=>{const rr=rx*sc;if(rr<.4)return;c.beginPath();c.ellipse(this.x*W,this.y*H,rr,rr*this.aspect,0,0,Math.PI*2);c.strokeStyle=`rgba(${r},${g},${b},${this.life*op*fade*vIntensity})`;c.lineWidth=0.7*rs;c.stroke();});}
+  update(bass){if(this.delay>0){this.delay--;return;}this.r+=this.expansion*(1+bass*vParticleIntensity*0.25);this.life-=this.decay;if(this.life<=0||this.r>this.maxR+0.003)this.reset(false);}
+  draw(c,W,H){if(this.delay>0||this.r<0.001)return;const[r,g,b]=themeRGB;const rx=this.r*W;const fade=Math.max(0,1-this.r/this.maxR*.85);const rs=getResolutionScale(W);[[1.0,.18],[0.55,.14],[0.22,.22]].forEach(([sc,op])=>{const rr=rx*sc;if(rr<.4)return;c.beginPath();c.ellipse(this.x*W,this.y*H,rr,rr*this.aspect,0,0,Math.PI*2);c.strokeStyle=`rgba(${r},${g},${b},${this.life*op*fade*vParticleIntensity})`;c.lineWidth=0.7*rs;c.stroke();});}
 }
 // ── SMOKE ─────────────────────────────────────────────
 class VSmokeParticle{
   constructor(x){this.ox=x;this.reset();}
   reset(){this.x=this.ox;this.y=0.88+Math.random()*0.12;this.vx=(Math.random()-.5)*0.0002;this.vy=-(Math.random()*0.0003+0.00015);this.size=Math.random()*60+25;this.life=1;this.decay=Math.random()*0.002+0.0008;}
-  update(e){this.x+=this.vx*(1+e*vIntensity);this.y+=this.vy*(1+e*vIntensity);this.size+=0.4;this.life-=this.decay;if(this.life<=0||this.y<-.15)this.reset();}
-  draw(c,W,H){const[r,g,b]=themeRGB;const px=this.x*W,py=this.y*H,rs=getResolutionScale(W),sz=this.size*rs;const gr=c.createRadialGradient(px,py,0,px,py,sz);gr.addColorStop(0,`rgba(${r},${g},${b},${this.life*.16*vIntensity})`);gr.addColorStop(1,`rgba(${r},${g},${b},0)`);c.beginPath();c.arc(px,py,sz,0,Math.PI*2);c.fillStyle=gr;c.fill();}
+  update(e){this.x+=this.vx*(1+e*vParticleIntensity);this.y+=this.vy*(1+e*vParticleIntensity);this.size+=0.4;this.life-=this.decay;if(this.life<=0||this.y<-.15)this.reset();}
+  draw(c,W,H){const[r,g,b]=themeRGB;const px=this.x*W,py=this.y*H,rs=getResolutionScale(W),sz=this.size*rs;const gr=c.createRadialGradient(px,py,0,px,py,sz);gr.addColorStop(0,`rgba(${r},${g},${b},${this.life*.16*vParticleIntensity})`);gr.addColorStop(1,`rgba(${r},${g},${b},0)`);c.beginPath();c.arc(px,py,sz,0,Math.PI*2);c.fillStyle=gr;c.fill();}
 }
 // ── CONSTELLATION ─────────────────────────────────────
 const V_STAR_ANCHORS=[[.08,.22],[.13,.35],[.18,.28],[.12,.18],[.22,.40],[.16,.45],[.32,.12],[.45,.08],[.55,.15],[.65,.10],[.78,.18],[.88,.12],[.38,.38],[.52,.32],[.62,.42],[.72,.35],[.83,.44],[.82,.62],[.90,.55],[.88,.70],[.78,.58],[.25,.65],[.35,.72],[.48,.68],[.60,.75],[.70,.62],[.42,.82],[.58,.88],[.30,.48],[.50,.52],[.68,.50]];
 class VConstellationPt{
   constructor(ax,ay){this.ax=ax;this.ay=ay;this.x=ax+(Math.random()-.5)*0.06;this.y=ay+(Math.random()-.5)*0.06;this.vx=(Math.random()-.5)*0.0007;this.vy=(Math.random()-.5)*0.0006;this.brightness=Math.random()>.7?0.9:Math.random()*.4+0.3;this.size=Math.random()>0.8?Math.random()*2+1.5:Math.random()*1.2+0.5;this.twinkle=Math.random()*Math.PI*2;this.twinkleSpeed=Math.random()*.03+.01;}
-  update(e){this.x+=this.vx*(1+e*vIntensity);this.y+=this.vy*(1+e*vIntensity);this.vx+=(this.ax-this.x)*0.00006;this.vy+=(this.ay-this.y)*0.00006;if(Math.random()<0.004){this.vx=(Math.random()-.5)*0.0007;this.vy=(Math.random()-.5)*0.0006;}this.twinkle+=this.twinkleSpeed;}
-  draw(c,W,H,e,iOvr){const eff=iOvr!==undefined?iOvr:vIntensity;const[r,g,b]=themeRGB;const tw=Math.sin(this.twinkle)*.3+.7;const op=this.brightness*tw*(.5+e*.4*eff);const rs=getResolutionScale(W);c.beginPath();c.arc(this.x*W,this.y*H,this.size*rs,0,Math.PI*2);c.fillStyle=`rgba(${r},${g},${b},${op})`;c.fill();if(this.size>1.8&&tw>.8){c.strokeStyle=`rgba(${r},${g},${b},${op*.4})`;c.lineWidth=0.7*rs;const arm=this.size*2.5*rs;c.beginPath();c.moveTo(this.x*W-arm,this.y*H);c.lineTo(this.x*W+arm,this.y*H);c.stroke();c.beginPath();c.moveTo(this.x*W,this.y*H-arm);c.lineTo(this.x*W,this.y*H+arm);c.stroke();}}
+  update(e){this.x+=this.vx*(1+e*vParticleIntensity);this.y+=this.vy*(1+e*vParticleIntensity);this.vx+=(this.ax-this.x)*0.00006;this.vy+=(this.ay-this.y)*0.00006;if(Math.random()<0.004){this.vx=(Math.random()-.5)*0.0007;this.vy=(Math.random()-.5)*0.0006;}this.twinkle+=this.twinkleSpeed;}
+  draw(c,W,H,e,iOvr){const eff=iOvr!==undefined?iOvr:vParticleIntensity;const[r,g,b]=themeRGB;const tw=Math.sin(this.twinkle)*.3+.7;const op=this.brightness*tw*(.5+e*.4*eff);const rs=getResolutionScale(W);c.beginPath();c.arc(this.x*W,this.y*H,this.size*rs,0,Math.PI*2);c.fillStyle=`rgba(${r},${g},${b},${op})`;c.fill();if(this.size>1.8&&tw>.8){c.strokeStyle=`rgba(${r},${g},${b},${op*.4})`;c.lineWidth=0.7*rs;const arm=this.size*2.5*rs;c.beginPath();c.moveTo(this.x*W-arm,this.y*H);c.lineTo(this.x*W+arm,this.y*H);c.stroke();c.beginPath();c.moveTo(this.x*W,this.y*H-arm);c.lineTo(this.x*W,this.y*H+arm);c.stroke();}}
 }
 
 // Init particle pools
@@ -943,7 +1086,7 @@ const vSmokeParticles=Array.from({length:70},(_,i)=>new VSmokeParticle(i/69));
 const vConstellationPts=V_STAR_ANCHORS.map(([ax,ay])=>new VConstellationPt(ax,ay));
 let vRings=[];
 
-function vTickWaterDrops(bass){if(Math.random()<bass*0.4*vIntensity){const s=vWaterDrops.find(d=>d.life<=0||d.r>=d.maxR);if(s){s.reset(false);s.delay=0;}}}
+function vTickWaterDrops(bass){if(Math.random()<bass*0.4*vParticleIntensity){const s=vWaterDrops.find(d=>d.life<=0||d.r>=d.maxR);if(s){s.reset(false);s.delay=0;}}}
 
 function drawVParticleLayer(c,W,H,avg,bass){
   switch(vCurrentParticle){
@@ -952,7 +1095,7 @@ function drawVParticleLayer(c,W,H,avg,bass){
     case'waterdrops':  vTickWaterDrops(bass);vWaterDrops.forEach(d=>{d.update(bass);d.draw(c,W,H);}); break;
     case'smoke':       vSmokeParticles.forEach(s=>{s.update(avg);s.draw(c,W,H);}); break;
     case'constellation':{
-      const ci=Math.min(2.5,vIntensity*2.2);
+      const ci=Math.min(2.5,vParticleIntensity*2.2);
       vConstellationPts.forEach(p=>{p.update(avg);p.draw(c,W,H,avg,ci);});
       const[r,g,b]=themeRGB;const maxD=W*.13;
       for(let i=0;i<vConstellationPts.length;i++)for(let j=i+1;j<vConstellationPts.length;j++){
@@ -999,21 +1142,54 @@ function getPos(code,W,H,sz){
 // Title cues
 function addCue(){cues.push({time:cues.length>0?cues[cues.length-1].time+5:0,text:'',hold:-1});renderCueList();}
 function removeCue(i){cues.splice(i,1);renderCueList();}
-function holdLabel(c){return c.hold===-1?'full':c.hold+'s';}
-function updateCueTime(i,v){cues[i].time=parseTS(v);}
-function updateCueHold(i,v){const s=v.trim().toLowerCase();cues[i].hold=(s==='full'||s==='')?-1:parseFloat(s.replace('s',''))||4;renderCueList();}
+function fmtCueTS(sec){
+  const s=Math.max(0,sec||0);
+  const h=Math.floor(s/3600),m=Math.floor((s%3600)/60),sc=Math.floor(s%60);
+  if(h>0)return`${h}:${String(m).padStart(2,'0')}:${String(sc).padStart(2,'0')}`;
+  return`${m}:${String(sc).padStart(2,'0')}`;
+}
+function cueHoldEnd(c){
+  const dur=vAudioBuffer?vAudioBuffer.duration:0;
+  if(c.hold===-1)return dur>0?dur:Math.max(c.time+4,c.time);
+  return c.hold;
+}
+function holdLabel(c){return fmtCueTS(cueHoldEnd(c));}
+function updateCueTime(i,v){
+  cues[i].time=Math.max(0,parseTS(v));
+  const end=cueHoldEnd(cues[i]);
+  if(end<cues[i].time)cues[i].hold=-1;
+  renderCueList();
+}
+function updateCueHold(i,v){
+  const s=v.trim().toLowerCase();
+  if(s==='full'||s==='')cues[i].hold=-1;
+  else{
+    const parsed=Math.max(0,parseTS(s));
+    const dur=vAudioBuffer?vAudioBuffer.duration:parsed;
+    const clamped=Math.max(cues[i].time,Math.min(parsed,dur||parsed));
+    cues[i].hold=Number.isFinite(clamped)?clamped:-1;
+  }
+  renderCueList();
+}
 function renderCueList(){
   const list=document.getElementById('cueList');list.innerHTML='';
-  cues.forEach((c,i)=>{const div=document.createElement('div');div.className='cue-row';div.innerHTML=`<input class="cue-time" type="text" value="${fmtTime(c.time)}" onchange="updateCueTime(${i},this.value)"/><input class="cue-text" type="text" value="${c.text}" placeholder="Title…" oninput="cues[${i}].text=this.value"/><input class="cue-dur" type="text" value="${holdLabel(c)}" onchange="updateCueHold(${i},this.value)"/><button class="cue-del" onclick="removeCue(${i})">×</button>`;list.appendChild(div);});
+  cues.forEach((c,i)=>{const div=document.createElement('div');div.className='cue-row';div.innerHTML=`<input class="cue-time" type="text" value="${fmtCueTS(c.time)}" onchange="updateCueTime(${i},this.value)"/><input class="cue-text" type="text" value="${c.text}" placeholder="Title…" oninput="cues[${i}].text=this.value"/><input class="cue-dur" type="text" value="${holdLabel(c)}" onchange="updateCueHold(${i},this.value)"/><button class="cue-del" onclick="removeCue(${i})">×</button>`;list.appendChild(div);});
 }
 renderCueList();
 
 function drawTitles(c,W,H,t){
   const dur=vAudioBuffer?vAudioBuffer.duration:9999;
   cues.forEach(cue=>{
-    if(!cue.text)return;const hold=cue.hold===-1?dur-cue.time:cue.hold;const elapsed=t-cue.time;
-    if(elapsed<0||elapsed>hold+vstyle.fade)return;
-    let op=elapsed<vstyle.fade?elapsed/vstyle.fade:elapsed<vstyle.fade+hold?1:1-(elapsed-vstyle.fade-hold)/vstyle.fade;
+    if(!cue.text)return;
+    const holdEnd=Math.max(cue.time,Math.min(cueHoldEnd(cue),dur));
+    const fadeDur=Math.max(0,vstyle.fade||0);
+    if(t<cue.time||t>=holdEnd)return;
+    let op=1;
+    if(fadeDur>0){
+      const fadeInOp=Math.min(1,Math.max(0,(t-cue.time)/fadeDur));
+      const fadeOutOp=Math.min(1,Math.max(0,(holdEnd-t)/fadeDur));
+      op=Math.min(fadeInOp,fadeOutOp);
+    }
     op=Math.max(0,Math.min(1,op));if(op<=0)return;
     const[r,g,b]=themeRGB;const sz=vstyle.titleSize*(W/900);
     c.font=`300 ${sz}px ${vstyle.font}`;c.textBaseline='alphabetic';
@@ -1177,6 +1353,24 @@ function vTickSeek(){
 }
 
 function vStopAudio(){if(vSource){try{vSource.onended=null;vSource.stop();}catch(e){}vSource=null;}vIsPlaying=false;vPlayBtn.textContent='▶';}
+function vResetLoadedAudio(){
+  vStopAudio();
+  cancelAnimationFrame(vAnimId);vAnimId=null;
+  vAnalyser=null;
+  vAudioBuffer=null;
+  vAudioFile=null;
+  vCurrentOffset=0;
+  vPlayStartCtxTime=0;
+  vPlayStartOffset=0;
+  vIsSeeking=false;
+  seekBar.value=0;
+  sCur.textContent='0:00';
+  sTotal.textContent='0:00';
+  document.getElementById('vAudioName').textContent='No audio loaded';
+  document.getElementById('renderBtn').disabled=true;
+  const badge=document.getElementById('vAudioBadge');if(badge)badge.style.display='none';
+  hint.style.display=vImgBitmap?'none':'block';
+}
 function vSeekWhilePlaying(offset){
   if(vSource){try{vSource.onended=null;vSource.stop();}catch(e){}vSource=null;}cancelAnimationFrame(vAnimId);if(!vAudioCtx)return;
   vAnalyser=configureVisualAnalyser(vAudioCtx.createAnalyser());vSource=vAudioCtx.createBufferSource();vSource.buffer=vAudioBuffer;
@@ -1228,8 +1422,7 @@ function pcmToAudioBuffer(res, ctx) {
 
 document.getElementById('vAudioIn').addEventListener('change',async e=>{
   const f=e.target.files[0];if(!f)return;
-  cancelAnimationFrame(vAnimId);vAnimId=null;
-  vAudioFile=f;
+  vResetLoadedAudio();
   document.getElementById('vAudioName').textContent=f.name;
   hint.style.display='none';
   if(!vAudioCtx){
@@ -1239,6 +1432,7 @@ document.getElementById('vAudioIn').addEventListener('change',async e=>{
   try{
     await new Promise(r=>setTimeout(r,50));
     vAudioBuffer=await decodeAudioFile(f);
+    vAudioFile=f;
     vCurrentOffset=0;seekBar.value=0;
     sTotal.textContent=fmtTime(vAudioBuffer.duration);
     sCur.textContent='0:00';
