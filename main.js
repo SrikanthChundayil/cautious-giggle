@@ -241,3 +241,76 @@ ipcMain.handle('decode-audio-pcm', async (_, { data, name }) => {
     try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch(_) {}
   }
 });
+
+// Decode audio directly from a file path (used after on-disk rename)
+ipcMain.handle('decode-audio-pcm-path', async (_, { filePath }) => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'srikanth-dec-'));
+  const outputPath = path.join(tmpDir, 'output.raw');
+  try {
+    if (!filePath) return { ok: false, error: 'Missing file path.' };
+    const srcPath = path.resolve(String(filePath));
+    if (!fs.existsSync(srcPath)) return { ok: false, error: 'Source file not found.' };
+
+    await new Promise((resolve, reject) => {
+      const args = ['-y', '-i', srcPath, '-f', 'f32le', '-ar', '44100', '-ac', '2', outputPath];
+      const proc = spawn('ffmpeg', args);
+      let stderr = '';
+      proc.stderr.on('data', d => stderr += d.toString());
+      proc.on('error', err => reject(new Error('ffmpeg not found: ' + err.message)));
+      proc.on('close', code => code === 0 ? resolve() : reject(new Error('ffmpeg exit ' + code + ': ' + stderr.slice(-400))));
+    });
+
+    const raw = fs.readFileSync(outputPath);
+    const ab = raw.buffer.slice(raw.byteOffset, raw.byteOffset + raw.byteLength);
+    return { ok: true, sampleRate: 44100, numberOfChannels: 2, buffer: ab };
+  } catch (e) {
+    return { ok: false, error: e.message };
+  } finally {
+    try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch (_) {}
+  }
+});
+
+// ── RENAME AUDIO FILE ON DISK ──────────────────────────────
+ipcMain.handle('rename-audio-file', async (_, { oldPath, newBaseName }) => {
+  try {
+    if (!oldPath || !newBaseName) return { ok: false, error: 'Missing path or name.' };
+    if (!fs.existsSync(oldPath)) return { ok: false, error: 'Source file not found.' };
+
+    const srcPath = path.resolve(oldPath);
+    const dir = path.dirname(srcPath);
+    const srcExt = path.extname(srcPath);
+    const srcBase = path.basename(srcPath);
+
+    const cleanedRaw = String(newBaseName)
+      .replace(/[<>:"/\\|?*\x00-\x1F]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!cleanedRaw) return { ok: false, error: 'Invalid file name.' };
+
+    const baseOnly = path.basename(cleanedRaw);
+    const proposedExt = path.extname(baseOnly);
+    const nameNoExt = proposedExt ? baseOnly.slice(0, -proposedExt.length).trim() : baseOnly;
+    if (!nameNoExt) return { ok: false, error: 'Invalid file name.' };
+
+    const finalExt = proposedExt || srcExt;
+    const makeName = (n) => `${n}${finalExt}`;
+
+    let candidateName = makeName(nameNoExt);
+    let candidatePath = path.join(dir, candidateName);
+    if (candidatePath.toLowerCase() === srcPath.toLowerCase()) {
+      return { ok: true, path: srcPath, name: srcBase };
+    }
+
+    let idx = 1;
+    while (fs.existsSync(candidatePath)) {
+      candidateName = makeName(`${nameNoExt} (${idx})`);
+      candidatePath = path.join(dir, candidateName);
+      idx++;
+    }
+
+    await fs.promises.rename(srcPath, candidatePath);
+    return { ok: true, path: candidatePath, name: candidateName };
+  } catch (e) {
+    return { ok: false, error: e.message || String(e) };
+  }
+});

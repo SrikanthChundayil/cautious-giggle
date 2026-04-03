@@ -20,6 +20,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // Decode audio via ffmpeg (bypasses Chrome native codec crash on Windows)
   decodeAudioPCM: (data, name) => ipcRenderer.invoke('decode-audio-pcm', { data, name }),
+  decodeAudioPCMPath: (filePath) => ipcRenderer.invoke('decode-audio-pcm-path', { filePath }),
+
+  // Rename source audio file on disk
+  renameAudioFile: (oldPath, newBaseName) => ipcRenderer.invoke('rename-audio-file', { oldPath, newBaseName }),
 
   // Progress listener
   onRenderProgress: (cb) => {
