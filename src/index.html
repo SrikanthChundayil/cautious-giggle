@@ -14,6 +14,8 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:0;opa
 .app-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:22px;}
 .app-title{font-family:var(--mono);font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--ac);}
 .app-sub{font-family:var(--mono);font-size:11px;color:var(--mu);}
+.app-right{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:flex-end;}
+.app-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
 .tabs{display:flex;border:0.5px solid var(--b);border-radius:8px;overflow:hidden;margin-bottom:24px;background:var(--sf);}
 .tab{flex:1;padding:11px 0;text-align:center;font-family:var(--mono);font-size:12px;letter-spacing:.05em;color:var(--mu);cursor:pointer;border-right:0.5px solid var(--b);transition:background .15s,color .15s;}
 .tab:last-child{border-right:none;}
@@ -109,6 +111,9 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;heigh
 #rBar{height:100%;width:0%;background:linear-gradient(90deg,#3a7bd5,#8ab4f8);border-radius:4px;transition:width .3s ease;}
 #rLabel{font-family:var(--mono);font-size:13px;color:rgba(255,255,255,.45);}
 #rSub{font-family:var(--mono);font-size:11px;color:rgba(255,255,255,.22);}
+#rCancelBtn{margin-top:8px;background:rgba(255,107,107,.12);border:0.5px solid rgba(255,107,107,.42);color:#ff9a9a;font-family:var(--mono);font-size:11px;padding:8px 16px;border-radius:999px;cursor:pointer;letter-spacing:.08em;text-transform:uppercase;}
+#rCancelBtn:hover:not(:disabled){background:rgba(255,107,107,.2);}
+#rCancelBtn:disabled{opacity:.45;cursor:not-allowed;}
 #cueList{padding:8px;display:flex;flex-direction:column;gap:5px;}
 .cue-row{display:flex;align-items:center;gap:7px;background:var(--s2);border:0.5px solid var(--b);border-radius:6px;padding:8px 11px;}
 .cue-time{font-family:var(--mono);font-size:12px;color:var(--ac);width:48px;flex-shrink:0;background:none;border:none;outline:none;text-align:center;}
@@ -213,17 +218,37 @@ textarea:focus{border-color:rgba(200,240,96,.35);}
 .sout-name input:focus{border-color:rgba(200,240,96,.45);}
 .dl-meta{font-family:var(--mono);font-size:11px;color:var(--mu);}
 .bot-bar{display:flex;align-items:center;gap:10px;}
+.shorts-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px;}
+.shorts-empty{padding:20px;border:0.5px dashed var(--b);border-radius:8px;background:var(--sf);font-family:var(--mono);font-size:11px;color:var(--mu);}
+.shorts-list{display:flex;flex-direction:column;gap:8px;}
+.short-card{background:var(--sf);border:0.5px solid var(--b);border-radius:8px;padding:10px 12px;display:grid;grid-template-columns:1fr auto auto auto;gap:10px;align-items:center;}
+.short-card.sel{border-color:rgba(200,240,96,.5);box-shadow:0 0 0 1px rgba(200,240,96,.16) inset;}
+.short-title{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.short-meta{font-family:var(--mono);font-size:10px;color:var(--mu);margin-top:3px;}
+.short-img{font-family:var(--mono);font-size:10px;color:var(--mu);min-width:130px;text-align:right;}
+.short-st{font-family:var(--mono);font-size:10px;color:var(--ac);min-width:120px;text-align:right;}
+.short-preview{position:relative;border:0.5px solid var(--b);border-radius:8px;overflow:hidden;background:#0b0c12;margin-bottom:12px;aspect-ratio:9/16;max-width:280px;}
+.short-preview canvas{position:absolute;inset:0;width:100%;height:100%;}
+.short-preview-note{position:absolute;left:8px;right:8px;bottom:8px;font-family:var(--mono);font-size:10px;color:var(--mu);background:rgba(0,0,0,.35);padding:5px 7px;border-radius:6px;backdrop-filter:blur(2px);}
 </style>
 </head>
 <body>
 <div class="wrap">
 <div class="app-hdr">
   <span class="app-title">Srikanth's Suite</span>
-  <span class="app-sub">Stitch · Visualise · Export</span>
+  <div class="app-right">
+    <span class="app-sub" id="projectMeta">Project: Unsaved</span>
+    <div class="app-actions">
+      <button class="btn-gh" onclick="sOpenProject()">Open</button>
+      <button class="btn-gh" onclick="sSaveProject(false)">Save</button>
+      <button class="btn-gh" onclick="sSaveProject(true)">Save As</button>
+    </div>
+  </div>
 </div>
 <div class="tabs">
   <div class="tab active" onclick="switchTab('stitch')">✂️ &nbsp;Srikanth's Stitcher</div>
   <div class="tab" onclick="switchTab('vis')">🎬 &nbsp;Srikanth's Visualiser</div>
+  <div class="tab" onclick="switchTab('shorts')">📱 &nbsp;Shorts Batch</div>
 </div>
 
 <!-- STITCHER -->
@@ -301,6 +326,7 @@ textarea:focus{border-color:rgba(200,240,96,.35);}
       <option value="2560x1440x169">2560×1440 · 16:9 · 2K ✦</option>
       <option value="3840x2160x169">3840×2160 · 16:9 · 4K</option>
       <option value="1080x1920x916">1080×1920 · 9:16 · Shorts</option>
+      <option value="1440x2560x916">1440×2560 · 9:16 · Shorts HQ</option>
       <option value="1080x1080x11">1080×1080 · 1:1 · Square</option>
       <option value="1080x1350x45">1080×1350 · 4:5 · Instagram</option>
     </select>
@@ -538,6 +564,72 @@ textarea:focus{border-color:rgba(200,240,96,.35);}
     </div><!-- end card-body -->
   </div>
 </div>
+
+<!-- SHORTS BATCH -->
+<div class="panel" id="tab-shorts">
+  <div class="sec-tag">Shorts Batch</div>
+  <div class="sec-title">Per-track. Image. <span>Render.</span></div>
+  <div class="short-preview">
+    <canvas id="sbPreviewCanvas"></canvas>
+    <div class="short-preview-note" id="sbPreviewNote">Select a loaded job to preview image + style.</div>
+  </div>
+  <div class="sbar" style="margin-bottom:10px;gap:10px;align-items:center;">
+    <div class="sg"><span class="sl">Colour</span>
+      <div style="display:flex;align-items:center;gap:7px;">
+        <div class="swatch-box"><div class="swatch-inner" id="sbThemeSwatch"></div><input type="color" id="sbThemeColor" value="#ffffff" oninput="applyTheme(this.value)" style="display:block;width:100%;height:100%;border:none;padding:0;cursor:pointer;background:none;"/></div>
+        <button class="btn-gh active" id="sbThemeWhiteBtn" style="padding:4px 10px;font-size:10px;" onclick="applyTheme('#ffffff')">⬜ White</button>
+        <button class="btn-gh" id="sbThemeGoldenBtn" style="padding:4px 10px;font-size:10px;border-color:rgba(255,200,80,.3);color:rgba(255,200,80,.8);" onclick="applyTheme('#ffc850')">✦ Golden</button>
+      </div>
+    </div>
+    <div class="sg"><span class="sl">Mode</span>
+      <select id="sbRenderModeSel" onchange="setVRenderMode(this.value)">
+        <option value="classic">Classic</option>
+        <option value="enhanced">Enhanced</option>
+      </select>
+    </div>
+    <div class="sg"><span class="sl">Particle</span>
+      <select id="sbParticleSel" onchange="setVParticle(this.value)">
+        <option value="sparkles">Sparkles</option>
+        <option value="fireflies">Fireflies</option>
+        <option value="waterdrops">Water Drops</option>
+        <option value="smoke">Smoke</option>
+        <option value="constellation">Constellation</option>
+        <option value="none">None</option>
+      </select>
+    </div>
+    <div class="sg"><span class="sl">Effect</span>
+      <select id="sbEffectSel" onchange="setVEffect(this.value)">
+        <option value="corner_bars">Corner Bars</option>
+        <option value="corner_mirrored">Corner Mirrored</option>
+        <option value="mirrored_bars">Mirrored Bars</option>
+        <option value="full_bars">Full Width Bars</option>
+        <option value="circular_bars">Circular Bars</option>
+        <option value="filled_wave">Filled Wave</option>
+        <option value="none">None</option>
+      </select>
+    </div>
+    <div class="sg"><span class="sl">Colour Mode</span>
+      <select id="sbWarmModeSel" onchange="setVWarmMode(this.value==='warm')">
+        <option value="warm">Warm Golden</option>
+        <option value="follow">Follow Picker</option>
+      </select>
+    </div>
+    <div class="sg"><span class="sl">Quality</span>
+      <select id="sbQualitySel">
+        <option value="balanced" selected>Balanced</option>
+        <option value="high">High</option>
+      </select>
+    </div>
+  </div>
+  <div class="shorts-head">
+    <button class="btn-ac" onclick="sbLoadFromStitcher()">Load From Stitcher</button>
+    <button class="btn-gh" onclick="sbOpenUniversalImage()">Universal Image</button>
+    <button class="btn-render" id="sbRenderAllBtn" onclick="sbRenderAll()" disabled style="max-width:180px">Render All Shorts</button>
+    <span class="app-sub" id="sbSummary">0 jobs loaded</span>
+  </div>
+  <div class="shorts-empty" id="sbEmpty">No jobs loaded yet. Make any stitcher edits you want, then click <b>Load From Stitcher</b> to snapshot tracks into shorts jobs.</div>
+  <div class="shorts-list" id="sbJobs" style="display:none"></div>
+</div>
 </div><!-- wrap -->
 
 <div id="rOverlay">
@@ -545,12 +637,14 @@ textarea:focus{border-color:rgba(200,240,96,.35);}
   <div id="rBarWrap"><div id="rBar"></div></div>
   <div id="rLabel">Starting…</div>
   <div id="rSub"></div>
+  <button id="rCancelBtn" type="button" onclick="cancelRender()">Stop Render</button>
 </div>
 
 <!-- Hidden file inputs — required, DO NOT remove -->
 <input type="file" id="sFileIn" accept="audio/*" multiple style="display:none"/>
 <input type="file" id="vImgIn" accept="image/*" style="display:none"/>
 <input type="file" id="vAudioIn" accept="audio/*" style="display:none"/>
+<input type="file" id="sbImgIn" accept="image/*" style="display:none"/>
 <canvas id="offscreen" width="2560" height="1440" style="display:none;"></canvas>
 <script>
 // Global error handler — shows crash details on screen instead of silent black
@@ -606,9 +700,11 @@ function parseTS(str){
 function hexToRGB(h){return[parseInt(h.slice(1,3),16),parseInt(h.slice(3,5),16),parseInt(h.slice(5,7),16)];}
 
 function switchTab(n){
-  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',(n==='stitch'&&i===0)||(n==='vis'&&i===1)));
+  document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',(n==='stitch'&&i===0)||(n==='vis'&&i===1)||(n==='shorts'&&i===2)));
   document.getElementById('tab-stitch').classList.toggle('active',n==='stitch');
   document.getElementById('tab-vis').classList.toggle('active',n==='vis');
+  document.getElementById('tab-shorts').classList.toggle('active',n==='shorts');
+  if(n==='shorts')sbSyncSharedControls();
   if(n==='vis')setTimeout(resize,50);
 }
 
@@ -674,6 +770,7 @@ let stitchedDownloadUrl=null;
 let stitchedOutputName='stitched_audio.wav';
 let sWaveDrag=null,sWaveHoverIdx=-1,sWaveRAF=0;
 let sSelectedIdx=-1;
+let sProjectPath='';
 let sTimelinePreview={active:false,paused:false,startCtxTime:0,pauseOffset:0,totalDuration:0,nodes:[]};
 let sTimelineSelected=false;
 let sTimelineInterval=null;
@@ -697,6 +794,199 @@ function sGetDur(f){return new Promise(r=>{const u=URL.createObjectURL(f);const 
 function sEffDur(t){return Math.max(0,t.duration-t.trimStart-t.trimEnd);}
 function sClamp(v,min,max){return Math.max(min,Math.min(max,v));}
 function sRoundT(v){return Math.max(0,Math.round(v*1000)/1000);}
+function sProjectNameFromPath(filePath){
+  const p=String(filePath||'');
+  if(!p)return'Unsaved';
+  const parts=p.split(/[/\\]+/);
+  return parts[parts.length-1]||'Unsaved';
+}
+function sUpdateProjectMeta(){
+  const el=document.getElementById('projectMeta');
+  if(!el)return;
+  el.textContent='Project: '+sProjectNameFromPath(sProjectPath);
+}
+function sBuildProjectData(){
+  const globalGapEl=document.getElementById('globalGap');
+  const themeHex='#'+themeRGB.map(v=>Math.max(0,Math.min(255,Math.round(v||0))).toString(16).padStart(2,'0')).join('');
+  const tracks=sTracks.map(t=>({
+    name:t.name||'',
+    filePath:t.filePath||'',
+    fileName:(t.file&&t.file.name)||'',
+    size:t.size||((t.file&&t.file.size)||0),
+    volume:parseFloat(t.volume||1),
+    fadeIn:parseFloat(t.fadeIn||0),
+    fadeOut:parseFloat(t.fadeOut||0),
+    fadeShape:t.fadeShape||'linear',
+    trimStart:parseFloat(t.trimStart||0),
+    trimEnd:parseFloat(t.trimEnd||0),
+    waveZoom:parseFloat(t.waveZoom||1),
+    wavePan:parseFloat(t.wavePan||0),
+    gapAfter:parseFloat(t.gapAfter||0)
+  }));
+  return {
+    app:'srikanth-suite',
+    version:1,
+    savedAt:new Date().toISOString(),
+    stitcher:{
+      globalGap:parseFloat((globalGapEl&&globalGapEl.value)||0),
+      stitchedOutputName:stitchedOutputName||'stitched_audio.wav',
+      tracks
+    },
+    visualiser:{
+      mode:vRenderMode,
+      particle:vCurrentParticle,
+      effect:vCurrentEffect,
+      warmMode:!!vWarmMode,
+      intensity:parseFloat(vIntensity||1),
+      particleIntensity:parseFloat(vParticleIntensity||1),
+      themeHex,
+      style:{...vstyle},
+      cues:Array.isArray(cues)?cues.map(c=>({time:parseFloat(c.time||0),text:String(c.text||''),hold:typeof c.hold==='number'?c.hold:-1})):[],
+      lyrics:Array.isArray(parsedLRC)?parsedLRC.map(l=>({time:parseFloat(l.time||0),text:String(l.text||'')})):[],
+      lyricsEndTime:lyricsEndTime===null?null:parseFloat(lyricsEndTime||0),
+      resolution:(document.getElementById('resSel')||{}).value||'1920x1080x169'
+    }
+  };
+}
+async function sSaveProject(saveAs){
+  if(!window.electronAPI||!window.electronAPI.saveDialog||!window.electronAPI.writeProjectFile){
+    alert('Project save is unavailable in this environment.');
+    return false;
+  }
+  let targetPath=sProjectPath;
+  if(saveAs||!targetPath){
+    targetPath=await window.electronAPI.saveDialog({
+      title:'Save Project',
+      defaultPath:(sProjectPath&&sProjectPath.trim())||'srikanth_project.ssproj',
+      filters:[{name:'Srikanth Suite Project',extensions:['ssproj','json']}]
+    });
+  }
+  if(!targetPath)return false;
+  const payload=JSON.stringify(sBuildProjectData(),null,2);
+  const wr=await window.electronAPI.writeProjectFile(targetPath,payload);
+  if(!wr||!wr.ok){
+    alert('Failed to save project: '+((wr&&wr.error)||'unknown error'));
+    return false;
+  }
+  sProjectPath=targetPath;
+  sUpdateProjectMeta();
+  return true;
+}
+async function sLoadTrackFromPath(item){
+  const rr=await window.electronAPI.readBinaryFile(item.filePath);
+  if(!rr||!rr.ok)throw new Error((rr&&rr.error)||'Unable to read source file.');
+  const bytes=new Uint8Array(rr.data);
+  const file=new File([bytes],rr.name||item.fileName||'audio.wav',{type:'audio/*',lastModified:Math.round(rr.lastModified||Date.now())});
+  const duration=await sGetDur(file);
+  const t={
+    file,
+    filePath:item.filePath||'',
+    name:item.name||file.name.replace(/\.[^.]+$/,''),
+    duration,
+    size:rr.size||file.size,
+    volume:parseFloat(item.volume||1),
+    fadeIn:parseFloat(item.fadeIn||0),
+    fadeOut:parseFloat(item.fadeOut||0),
+    fadeShape:item.fadeShape||'linear',
+    trimStart:parseFloat(item.trimStart||0),
+    trimEnd:parseFloat(item.trimEnd||0),
+    waveZoom:parseFloat(item.waveZoom||1),
+    wavePan:parseFloat(item.wavePan||0),
+    open:false,
+    url:URL.createObjectURL(file),
+    gapAfter:parseFloat(item.gapAfter||0),
+    _previewBuffer:null,
+    _waveformBins:null
+  };
+  sNormalizeTrackEdits(t);
+  return t;
+}
+function sApplyVisualiserProjectState(vis){
+  if(!vis)return;
+  if(vis.themeHex)applyTheme(vis.themeHex);
+  if(vis.mode)setVRenderMode(vis.mode);
+  if(vis.particle)setVParticle(vis.particle);
+  if(vis.effect)setVEffect(vis.effect);
+  if(typeof vis.warmMode==='boolean')setVWarmMode(vis.warmMode);
+  if(Number.isFinite(vis.intensity))vIntensity=sClamp(parseFloat(vis.intensity),0.2,2.5);
+  if(Number.isFinite(vis.particleIntensity))vParticleIntensity=sClamp(parseFloat(vis.particleIntensity),0.2,2.5);
+  const pSlider=document.getElementById('vParticleIntSlider');
+  const eSlider=document.getElementById('vIntSlider');
+  const pVal=document.getElementById('vParticleIntVal');
+  const eVal=document.getElementById('vIntVal');
+  if(pSlider)pSlider.value=String(vParticleIntensity);
+  if(eSlider)eSlider.value=String(vIntensity);
+  if(pVal)pVal.textContent=vParticleIntensity.toFixed(1)+'×';
+  if(eVal)eVal.textContent=vIntensity.toFixed(1)+'×';
+  if(vis.style&&typeof vis.style==='object'){
+    vstyle={...vstyle,...vis.style};
+    const map=[['fontSel',vstyle.font],['titleSz',String(vstyle.titleSize)],['textPos',vstyle.position],['fadeDur',String(vstyle.fade)],['lyricsSz',String(vstyle.lyricsSize)],['lyricsPos',vstyle.lyricsPos],['lyricsAnim',vstyle.lyricsAnim]];
+    map.forEach(([id,val])=>{const el=document.getElementById(id);if(el&&val!==undefined)el.value=val;});
+    const lyrToggle=document.getElementById('lyricsEnabled');
+    if(lyrToggle)lyrToggle.checked=!!vstyle.lyricsEnabled;
+    updateStyle();
+  }
+  if(Array.isArray(vis.cues))cues=vis.cues.map(c=>({time:parseFloat(c.time||0),text:String(c.text||''),hold:typeof c.hold==='number'?c.hold:-1}));
+  renderCueList();
+  if(Array.isArray(vis.lyrics))parsedLRC=vis.lyrics.map(l=>({time:parseFloat(l.time||0),text:String(l.text||'')}));
+  lyricsEndTime=vis.lyricsEndTime===null?null:parseFloat(vis.lyricsEndTime||0);
+  const lrcInput=document.getElementById('lrcInput');
+  if(lrcInput&&Array.isArray(parsedLRC)&&parsedLRC.length)lrcInput.value=parsedLRC.map(l=>`${fmtLRC(l.time)} ${l.text}`).join('\n');
+  const resSel=document.getElementById('resSel');
+  if(resSel&&vis.resolution&&Array.from(resSel.options).some(o=>o.value===vis.resolution)){
+    resSel.value=vis.resolution;
+    updateAspect();
+  }
+}
+async function sOpenProject(){
+  if(!window.electronAPI||!window.electronAPI.openProjectDialog||!window.electronAPI.readProjectFile||!window.electronAPI.readBinaryFile){
+    alert('Project load is unavailable in this environment.');
+    return false;
+  }
+  const projectPath=await window.electronAPI.openProjectDialog({
+    title:'Open Project',
+    filters:[{name:'Srikanth Suite Project',extensions:['ssproj','json']}]
+  });
+  if(!projectPath)return false;
+  const rr=await window.electronAPI.readProjectFile(projectPath);
+  if(!rr||!rr.ok){
+    alert('Failed to open project: '+((rr&&rr.error)||'unknown error'));
+    return false;
+  }
+  let parsed;
+  try{parsed=JSON.parse(rr.content);}catch(e){alert('Project file is invalid JSON.');return false;}
+  if(!parsed||typeof parsed!=='object'){alert('Project file is invalid.');return false;}
+
+  clearAll(false);
+  const stitch=parsed.stitcher||{};
+  const globalGap=sClamp(parseFloat(stitch.globalGap||0),0,5);
+  const gapEl=document.getElementById('globalGap');
+  const gapValEl=document.getElementById('globalGapVal');
+  if(gapEl)gapEl.value=String(globalGap);
+  if(gapValEl)gapValEl.textContent=globalGap.toFixed(1)+'s';
+  sApplyStitchedOutputName(stitch.stitchedOutputName||'stitched_audio.wav');
+
+  const tracks=Array.isArray(stitch.tracks)?stitch.tracks:[];
+  const loaded=[];
+  const missing=[];
+  for(const item of tracks){
+    try{
+      if(!item||!item.filePath){missing.push((item&&item.name)||'unknown');continue;}
+      const t=await sLoadTrackFromPath(item);
+      loaded.push(t);
+    }catch(e){
+      missing.push((item&&item.name)||item.filePath||'unknown');
+    }
+  }
+  sTracks=loaded;
+  sSelectedIdx=sTracks.length?0:-1;
+  sRender();
+  sApplyVisualiserProjectState(parsed.visualiser||{});
+  sProjectPath=projectPath;
+  sUpdateProjectMeta();
+  if(missing.length)alert(`Project loaded with ${missing.length} missing source file(s).`);
+  return true;
+}
 function sWaveBinCountForDuration(duration){
   return Math.max(S_WAVE_MIN_BINS,Math.min(S_WAVE_MAX_BINS,Math.ceil(Math.max(1,duration)*S_WAVE_BINS_PER_SECOND)));
 }
@@ -1488,7 +1778,29 @@ function sRemoveTrack(i){
   else if(sSelectedIdx>i)sSelectedIdx--;
   sRender();
 }
-function clearAll(){sTimelineStop(true);sStopPreview();sTracks.forEach(t=>URL.revokeObjectURL(t.url));sTracks=[];sSelectedIdx=-1;document.getElementById('sDlWrap').classList.remove('visible');document.getElementById('sProgWrap').classList.remove('visible');document.getElementById('hintRow').classList.remove('visible');if(stitchedDownloadUrl){URL.revokeObjectURL(stitchedDownloadUrl);stitchedDownloadUrl=null;}stitchedBlob=null;stitchedFile=null;stitchedOutputName='stitched_audio.wav';const outName=document.getElementById('sOutName');if(outName)outName.value=stitchedOutputName;document.getElementById('sendToVisBtn').disabled=true;sRender();}
+function clearAll(resetProject){
+  const shouldResetProject=resetProject!==false;
+  sTimelineStop(true);
+  sStopPreview();
+  sTracks.forEach(t=>URL.revokeObjectURL(t.url));
+  sTracks=[];
+  sSelectedIdx=-1;
+  document.getElementById('sDlWrap').classList.remove('visible');
+  document.getElementById('sProgWrap').classList.remove('visible');
+  document.getElementById('hintRow').classList.remove('visible');
+  if(stitchedDownloadUrl){URL.revokeObjectURL(stitchedDownloadUrl);stitchedDownloadUrl=null;}
+  stitchedBlob=null;
+  stitchedFile=null;
+  stitchedOutputName='stitched_audio.wav';
+  const outName=document.getElementById('sOutName');
+  if(outName)outName.value=stitchedOutputName;
+  document.getElementById('sendToVisBtn').disabled=true;
+  if(shouldResetProject){
+    sProjectPath='';
+    sUpdateProjectMeta();
+  }
+  sRender();
+}
 
 // Stitcher preview
 function sGetPreviewCtx(){if(!window.__sPreviewCtx)window.__sPreviewCtx=new(window.AudioContext||window.webkitAudioContext)();return window.__sPreviewCtx;}
@@ -1822,6 +2134,285 @@ let vPlayStartCtxTime=0,vPlayStartOffset=0,vCurrentOffset=0,vIsSeeking=false;
 let themeRGB=[255,255,255];
 let vstyle={font:"'Cormorant Garamond',serif",titleSize:32,position:'bl',fade:1,lyricsEnabled:false,lyricsSize:22,lyricsPos:'bc',lyricsAnim:'fade'};
 let lyricsEndTime=null,cues=[],parsedLRC=[],tapLines=[],tapMode=false,tapCursor=0;
+let sbJobs=[];
+let sbUniversalImageFile=null,sbUniversalImageBitmap=null;
+let sbPickJobIdx=-1;
+let sbSelectedJobIdx=-1;
+let sbPreviewRAF=0;
+let sbIsRenderAllRunning=false;
+const SB_QUALITY_PROFILES={
+  balanced:{resolution:'1080x1920x916',jpegQuality:0.8,intensityBoost:1,particleBoost:1},
+  high:{resolution:'1440x2560x916',jpegQuality:0.92,intensityBoost:1.08,particleBoost:1.2}
+};
+
+function sbGetQualityProfile(){
+  const sel=document.getElementById('sbQualitySel');
+  const key=(sel&&sel.value)||'balanced';
+  return SB_QUALITY_PROFILES[key]||SB_QUALITY_PROFILES.balanced;
+}
+
+function sbReleaseJobPayload(job){
+  if(!job)return;
+  job.sourceFile=null;
+  job.imageFile=null;
+  job.imageBitmap=null;
+  job.payloadReleased=true;
+}
+
+function sbCaptureTrackSnapshot(t,i){
+  const snap={
+    duration:Math.max(0,parseFloat(t.duration||0)),
+    trimStart:Math.max(0,parseFloat(t.trimStart||0)),
+    trimEnd:Math.max(0,parseFloat(t.trimEnd||0)),
+    fadeIn:Math.max(0,parseFloat(t.fadeIn||0)),
+    fadeOut:Math.max(0,parseFloat(t.fadeOut||0)),
+    fadeShape:t.fadeShape||'linear',
+    volume:Math.max(0,parseFloat(t.volume||1)),
+    waveZoom:1,
+    wavePan:0
+  };
+  sNormalizeTrackEdits(snap);
+  return {
+    trackIndex:i,
+    name:sTrackDisplayName(t.name)||`Track ${i+1}`,
+    sourceFile:t.file,
+    sourcePath:t.filePath||'',
+    sourceName:t.name||((t.file&&t.file.name)||`track_${i+1}.wav`),
+    duration:sEffDur(snap),
+    edits:{
+      trimStart:snap.trimStart,
+      trimEnd:snap.trimEnd,
+      fadeIn:snap.fadeIn,
+      fadeOut:snap.fadeOut,
+      fadeShape:snap.fadeShape,
+      volume:snap.volume
+    },
+    imageFile:sbUniversalImageFile,
+    imageBitmap:sbUniversalImageBitmap,
+    status:'ready'
+  };
+}
+async function sbDecodeJobPCM(job){
+  if(job.sourcePath&&window.electronAPI&&window.electronAPI.decodeAudioPCMPath){
+    const byPath=await window.electronAPI.decodeAudioPCMPath(job.sourcePath);
+    if(byPath&&byPath.ok)return byPath;
+  }
+  if(job.sourceFile){
+    const ab=await job.sourceFile.arrayBuffer();
+    return window.electronAPI.decodeAudioPCM(new Uint8Array(ab),job.sourceName||job.sourceFile.name);
+  }
+  return {ok:false,error:'Missing source track file.'};
+}
+function sbApplySnapshotEditsToBuffer(src,edits,ctx){
+  const sr=src.sampleRate,nc=src.numberOfChannels,dur=src.duration;
+  const trimStart=sClamp(edits.trimStart||0,0,dur);
+  const trimEnd=sClamp(edits.trimEnd||0,0,dur);
+  const endTime=Math.max(trimStart,Math.min(dur,dur-trimEnd));
+  const outDur=Math.max(0,endTime-trimStart);
+  const outLen=Math.max(1,Math.floor(outDur*sr));
+  const out=ctx.createBuffer(nc,outLen,sr);
+  const vol=Math.max(0,edits.volume||1);
+  const shape=edits.fadeShape||'linear';
+  const fadeIn=Math.max(0,Math.min(edits.fadeIn||0,outDur));
+  const fadeOut=Math.max(0,Math.min(edits.fadeOut||0,outDur));
+  const startSample=Math.floor(trimStart*sr);
+  for(let ch=0;ch<nc;ch++){
+    const srcCh=src.getChannelData(ch),dst=out.getChannelData(ch);
+    for(let i=0;i<outLen;i++){
+      const t=i/sr;
+      let g=vol;
+      if(fadeIn>0&&t<fadeIn)g*=sFadeCurveValue(t/fadeIn,shape);
+      if(fadeOut>0){
+        const foStart=Math.max(0,outDur-fadeOut);
+        if(t>=foStart)g*=Math.max(0,1-sFadeCurveValue((t-foStart)/fadeOut,shape));
+      }
+      dst[i]=(srcCh[startSample+i]||0)*g;
+    }
+  }
+  return out;
+}
+function sbDrawPreview(){
+  const canvas=document.getElementById('sbPreviewCanvas');
+  if(!canvas)return;
+  const prep=sPrepareCanvas(canvas);
+  if(!prep)return;
+  const c=prep.ctx,W=prep.w,H=prep.h;
+  c.clearRect(0,0,W,H);
+  c.fillStyle='#0b0c12';c.fillRect(0,0,W,H);
+  if(sbIsRenderAllRunning){
+    c.fillStyle='rgba(220,226,238,.82)';
+    c.font=`500 ${Math.max(12,Math.round(Math.min(W,H)*0.045))}px Inter`;
+    c.textAlign='center';
+    c.textBaseline='middle';
+    c.fillText('Preview paused during Render All',W/2,H/2);
+    const note=document.getElementById('sbPreviewNote');
+    if(note)note.textContent='Preview paused while Render All is running.';
+    return;
+  }
+  const job=sbJobs[sbSelectedJobIdx];
+  if(job&&job.imageBitmap){
+    const sc=Math.max(W/job.imageBitmap.width,H/job.imageBitmap.height);
+    const sw=job.imageBitmap.width*sc,sh=job.imageBitmap.height*sc;
+    c.drawImage(job.imageBitmap,(W-sw)/2,(H-sh)/2,sw,sh);
+  }
+  const tt=Date.now()/1000,data=new Uint8Array(128);
+  for(let i=0;i<data.length;i++)data[i]=(Math.sin(i*0.21+tt*2.0)*0.5+0.5)*(34+vIntensity*34);
+  const avg=data.reduce((a,b)=>a+b,0)/data.length/255;
+  const bass=data.slice(0,6).reduce((a,b)=>a+b,0)/6/255;
+  drawVParticleLayer(c,W,H,avg,bass);
+  drawVEffect(c,W,H,data,tt,avg,bass);
+  const note=document.getElementById('sbPreviewNote');
+  if(note)note.textContent=job?`Preview: ${job.name}`:'Select a loaded job to preview image + style.';
+}
+function sbPreviewLoop(){
+  if(document.getElementById('tab-shorts').classList.contains('active')&&!sbIsRenderAllRunning)sbDrawPreview();
+  sbPreviewRAF=requestAnimationFrame(sbPreviewLoop);
+}
+
+function sbUpdateSummary(){
+  const s=document.getElementById('sbSummary');
+  if(s)s.textContent=`${sbJobs.length} jobs loaded`;
+  const empty=document.getElementById('sbEmpty');
+  const list=document.getElementById('sbJobs');
+  if(empty)empty.style.display=sbJobs.length?'none':'block';
+  if(list)list.style.display=sbJobs.length?'flex':'none';
+  const allBtn=document.getElementById('sbRenderAllBtn');
+  if(allBtn)allBtn.disabled=sbJobs.length===0;
+}
+function sbRenderJobs(){
+  const wrap=document.getElementById('sbJobs');
+  if(!wrap)return;
+  wrap.innerHTML='';
+  sbJobs.forEach((j,i)=>{
+    const row=document.createElement('div');
+    row.className='short-card'+(i===sbSelectedJobIdx?' sel':'');
+    row.onclick=()=>{sbSelectedJobIdx=i;sbRenderJobs();};
+    row.innerHTML=`<div><div class="short-title">${j.name}</div><div class="short-meta">${fmtTime(j.duration)} · track ${j.trackIndex+1}${j.payloadReleased?' · payload released':''}</div></div><div class="short-img">${j.imageBitmap?'image ready':'no image'}</div><button class="btn-gh" onclick="event.stopPropagation();sbPickJobImage(${i})">Image</button><div style="display:flex;align-items:center;gap:8px;justify-content:flex-end;"><span class="short-st">${j.status}</span><button class="btn-ac" onclick="event.stopPropagation();sbRenderJob(${i})" ${sbIsRenderAllRunning?'disabled':''}>Render</button></div>`;
+    wrap.appendChild(row);
+  });
+  sbUpdateSummary();
+  sbDrawPreview();
+}
+function sbLoadFromStitcher(){
+  sbJobs=sTracks.map((t,i)=>sbCaptureTrackSnapshot(t,i));
+  sbSelectedJobIdx=sbJobs.length?0:-1;
+  sbRenderJobs();
+}
+function sbJoinPath(dir,name){
+  if(!dir)return name;
+  return /[\\/]$/.test(dir)?(dir+name):(dir+'\\'+name);
+}
+function sbOpenUniversalImage(){
+  sbPickJobIdx=-1;
+  document.getElementById('sbImgIn').click();
+}
+function sbPickJobImage(i){
+  sbPickJobIdx=i;
+  document.getElementById('sbImgIn').click();
+}
+async function sbApplyImage(file){
+  if(!file)return;
+  const bitmap=await createImageBitmap(file);
+  if(sbPickJobIdx<0){
+    sbUniversalImageFile=file;
+    sbUniversalImageBitmap=bitmap;
+    sbJobs.forEach(j=>{j.imageFile=file;j.imageBitmap=bitmap;});
+  }else if(sbJobs[sbPickJobIdx]){
+    sbJobs[sbPickJobIdx].imageFile=file;
+    sbJobs[sbPickJobIdx].imageBitmap=bitmap;
+  }
+  sbPickJobIdx=-1;
+  sbRenderJobs();
+}
+async function sbRenderJob(i,opts){
+  opts=opts||{};
+  const job=sbJobs[i];
+  if(!job)return;
+  if(!job.sourceFile&&!job.sourcePath){job.status='missing source';sbRenderJobs();return;}
+  if(!job.imageBitmap){alert('Set an image for this short first.');return;}
+  job.status='rendering...';sbRenderJobs();
+  const qualityProfile=sbGetQualityProfile();
+  const prev={img:vImgBitmap,audio:vAudioBuffer,file:vAudioFile,cur:vCurrentOffset,res:document.getElementById('resSel').value,pi:vParticleIntensity,ei:vIntensity};
+  try{
+    const decoded=await sbDecodeJobPCM(job);
+    if(!decoded||!decoded.ok)throw new Error((decoded&&decoded.error)||'Decode failed');
+    if(!vAudioCtx)vAudioCtx=new(window.AudioContext||window.webkitAudioContext)();
+    const srcBuffer=pcmToAudioBuffer(decoded,vAudioCtx);
+    vAudioBuffer=sbApplySnapshotEditsToBuffer(srcBuffer,job.edits,vAudioCtx);
+    vAudioFile=job.sourceFile||{name:job.sourceName};
+    vImgBitmap=job.imageBitmap;
+    vCurrentOffset=0;
+    const resSel=document.getElementById('resSel');
+    resSel.value=qualityProfile.resolution;
+    updateAspect();
+    vIntensity=sClamp(prev.ei*qualityProfile.intensityBoost,0.2,2.5);
+    vParticleIntensity=sClamp(prev.pi*qualityProfile.particleBoost,0.2,2.5);
+    const renderOpts={
+      defaultFileName:`${sSanitizeFileName(job.name)||'short'}_short.mp4`,
+      resolution:qualityProfile.resolution,
+      jpegQuality:qualityProfile.jpegQuality
+    };
+    if(opts.outputPath)renderOpts.outputPath=opts.outputPath;
+    if(typeof opts.revealOnDone==='boolean')renderOpts.revealOnDone=opts.revealOnDone;
+    const ok=await startRender(renderOpts);
+    job.status=ok?'rendered':'cancelled';
+    if(ok&&sbIsRenderAllRunning)sbReleaseJobPayload(job);
+    return ok;
+  }catch(err){
+    console.error('Short render failed',err);
+    job.status='failed';
+    if(!opts.silent)alert('Short render failed: '+(err.message||err));
+    return false;
+  }finally{
+    vImgBitmap=prev.img;
+    vAudioBuffer=prev.audio;
+    vAudioFile=prev.file;
+    vCurrentOffset=prev.cur;
+    vParticleIntensity=prev.pi;
+    vIntensity=prev.ei;
+    document.getElementById('resSel').value=prev.res;
+    updateAspect();
+    sbRenderJobs();
+  }
+}
+async function sbRenderAll(){
+  if(sbIsRenderAllRunning||sbJobs.length===0)return;
+  if(!window.electronAPI||!window.electronAPI.openFolderDialog){
+    alert('Batch output folder picker is unavailable in this build.');
+    return;
+  }
+  const outDir=await window.electronAPI.openFolderDialog({title:'Select folder for all rendered shorts'});
+  if(!outDir)return;
+  const btn=document.getElementById('sbRenderAllBtn');
+  const prevTxt=btn?btn.textContent:'';
+  sbIsRenderAllRunning=true;
+  if(btn){btn.disabled=true;btn.textContent='Rendering...';}
+  sbDrawPreview();
+  sbRenderJobs();
+  let firstRenderedPath='';
+  try{
+    const seenNames=new Map();
+    for(let i=0;i<sbJobs.length;i++){
+      const baseName=sSanitizeFileName(sbJobs[i].name)||`short_${i+1}`;
+      const key=baseName.toLowerCase();
+      const used=seenNames.get(key)||0;
+      seenNames.set(key,used+1);
+      const suffix=used===0?'':`_${used+1}`;
+      const fileName=`${baseName}${suffix}_short.mp4`;
+      const outPath=sbJoinPath(outDir,fileName);
+      const ok=await sbRenderJob(i,{outputPath:outPath,revealOnDone:false,silent:true});
+      if(ok&&!firstRenderedPath)firstRenderedPath=outPath;
+    }
+    if(firstRenderedPath&&window.electronAPI&&window.electronAPI.showInFolder){
+      await window.electronAPI.showInFolder(firstRenderedPath);
+    }
+  }finally{
+    sbIsRenderAllRunning=false;
+    if(btn){btn.textContent=prevTxt||'Render All Shorts';btn.disabled=sbJobs.length===0;}
+    sbRenderJobs();
+  }
+}
+if(!sbPreviewRAF)sbPreviewRAF=requestAnimationFrame(sbPreviewLoop);
 
 function resize(){
   // Use actual render resolution for preview canvas, not display size
@@ -1838,14 +2429,21 @@ function applyTheme(hex){
   themeRGB=[parseInt(v.slice(0,2),16),parseInt(v.slice(2,4),16),parseInt(v.slice(4,6),16)];
   document.getElementById('themeColor').value=hex;
   const sw=document.getElementById('themeSwatch');if(sw)sw.style.background=hex;
+  const sbSw=document.getElementById('sbThemeSwatch');if(sbSw)sbSw.style.background=hex;
+  const sbColor=document.getElementById('sbThemeColor');if(sbColor)sbColor.value=hex;
   const whiteBtn=document.getElementById('themeWhiteBtn');
   const goldBtn=document.getElementById('themeGoldenBtn');
+  const sbWhiteBtn=document.getElementById('sbThemeWhiteBtn');
+  const sbGoldBtn=document.getElementById('sbThemeGoldenBtn');
   if(whiteBtn)whiteBtn.classList.toggle('active',hex.toLowerCase()==='#ffffff');
   if(goldBtn)goldBtn.classList.toggle('active',hex.toLowerCase()==='#ffc850');
+  if(sbWhiteBtn)sbWhiteBtn.classList.toggle('active',hex.toLowerCase()==='#ffffff');
+  if(sbGoldBtn)sbGoldBtn.classList.toggle('active',hex.toLowerCase()==='#ffc850');
   if(!vWarmMode){
     if(typeof vSparkles!=='undefined') vSparkles.forEach(s=>s.recolour());
     if(typeof vFireflies!=='undefined') vFireflies.forEach(f=>f.reset(false));
   }
+  sbSyncSharedControls();
 }
 
 // Particle/effect selectors
@@ -1866,6 +2464,9 @@ const vModeLastSelection={
 let vAdvancedOpen={particle:false,effect:false};
 const vFavEffects=new Set(['corner_bars','corner_mirrored','mirrored_bars']);
 let vBarSmooth=new Float32Array(256);
+function vResetBarSmoothing(){
+  if(vBarSmooth&&vBarSmooth.fill)vBarSmooth.fill(0);
+}
 applyTheme('#ffffff');
 
 function setVParticle(id,el){
@@ -1876,6 +2477,7 @@ function setVParticle(id,el){
   if(card)card.classList.add('active');
   if((id==='smoke'||id==='constellation'||id==='none')&&!vAdvancedOpen.particle)toggleVAdvanced('particle',true);
   document.getElementById('vWarmRow').style.display=(id==='sparkles'||id==='fireflies')?'flex':'none';
+  sbSyncSharedControls();
 }
 function setVEffect(id,el){
   vCurrentEffect=id;
@@ -1884,6 +2486,8 @@ function setVEffect(id,el){
   const card=el||document.getElementById('vec_'+id);
   if(card)card.classList.add('active');
   if(!vFavEffects.has(id)&&!vAdvancedOpen.effect)toggleVAdvanced('effect',true);
+  vResetBarSmoothing();
+  sbSyncSharedControls();
 }
 function setVWarmMode(val){
   vWarmMode=val;
@@ -1891,6 +2495,7 @@ function setVWarmMode(val){
   document.getElementById('vTogFollow').classList.toggle('active',!val);
   if(typeof vSparkles!=='undefined') vSparkles.forEach(s=>s.recolour());
   if(typeof vFireflies!=='undefined') vFireflies.forEach(f=>f.reset(false));
+  sbSyncSharedControls();
 }
 function toggleVAdvanced(kind,forceOpen){
   const open=(typeof forceOpen==='boolean')?forceOpen:!vAdvancedOpen[kind];
@@ -1929,7 +2534,25 @@ function setVRenderMode(mode){
   vRenderMode=mode;
   document.getElementById('vModeClassicBtn').classList.toggle('active',mode==='classic');
   document.getElementById('vModeEnhancedBtn').classList.toggle('active',mode==='enhanced');
+  vResetBarSmoothing();
   vApplyModeProfile(mode);
+  sbSyncSharedControls();
+}
+function sbSyncSharedControls(){
+  const toHex=(n)=>Math.max(0,Math.min(255,Math.round(n||0))).toString(16).padStart(2,'0');
+  const hex='#'+toHex(themeRGB[0])+toHex(themeRGB[1])+toHex(themeRGB[2]);
+  const sbTheme=document.getElementById('sbThemeColor');
+  const sbMode=document.getElementById('sbRenderModeSel');
+  const sbParticle=document.getElementById('sbParticleSel');
+  const sbEffect=document.getElementById('sbEffectSel');
+  const sbWarm=document.getElementById('sbWarmModeSel');
+  const sbSw=document.getElementById('sbThemeSwatch');
+  if(sbTheme)sbTheme.value=hex;
+  if(sbSw)sbSw.style.background=hex;
+  if(sbMode)sbMode.value=vRenderMode;
+  if(sbParticle)sbParticle.value=vCurrentParticle;
+  if(sbEffect)sbEffect.value=vCurrentEffect;
+  if(sbWarm)sbWarm.value=vWarmMode?'warm':'follow';
 }
 function vSmoothBarValue(i,target){
   const cur=vBarSmooth[i]||0;
@@ -1984,6 +2607,22 @@ const vWaterDrops=(()=>{const d=[];for(let row=0;row<6;row++)for(let col=0;col<9
 const vSmokeParticles=Array.from({length:70},(_,i)=>new VSmokeParticle(i/69));
 const vConstellationPts=V_STAR_ANCHORS.map(([ax,ay])=>new VConstellationPt(ax,ay));
 let vRings=[];
+
+function vResetParticleState(){
+  vSparkles.forEach(s=>s.reset(true));
+  vFireflies.forEach(f=>f.reset(true));
+  vWaterDrops.forEach(d=>d.reset(true));
+  vSmokeParticles.forEach(s=>s.reset());
+  vConstellationPts.forEach(p=>{
+    p.x=p.ax+(Math.random()-.5)*0.06;
+    p.y=p.ay+(Math.random()-.5)*0.06;
+    p.vx=(Math.random()-.5)*0.0007;
+    p.vy=(Math.random()-.5)*0.0006;
+    p.twinkle=Math.random()*Math.PI*2;
+  });
+  offParts=Array.from({length:150},()=>new VSparkle());
+  offDrops=[];
+}
 
 function vTickWaterDrops(bass){if(Math.random()<bass*0.4*vParticleIntensity){const s=vWaterDrops.find(d=>d.life<=0||d.r>=d.maxR);if(s){s.reset(false);s.delay=0;}}}
 
@@ -2332,6 +2971,12 @@ function togglePlay(){
 }
 
 document.getElementById('vImgIn').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;vImgBitmap=await createImageBitmap(f);hint.style.display='none';});
+document.getElementById('sbImgIn').addEventListener('change',async e=>{
+  const f=e.target.files[0];
+  if(!f)return;
+  try{await sbApplyImage(f);}catch(err){alert('Image load failed: '+(err.message||err));}
+  e.target.value='';
+});
 // Decode audio via ffmpeg IPC — bypasses Chrome native codec crash (0xC0000005 on Windows)
 async function decodeAudioFile(file) {
   const ab = await file.arrayBuffer();
@@ -2398,6 +3043,27 @@ const VIS_ANALYSER_BLACKMAN=(()=>{
 })();
 
 function setRP(pct,label,sub){document.getElementById('rBar').style.width=pct+'%';document.getElementById('rPct').textContent=Math.round(pct)+'%';document.getElementById('rLabel').textContent=label;document.getElementById('rSub').textContent=sub||'';}
+let vRenderInProgress=false;
+let vRenderCancelRequested=false;
+let vActiveRenderJobId=null;
+
+function isRenderCancelRequested(){return vRenderCancelRequested===true;}
+function makeRenderJobId(){return `render_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,8)}`;}
+function isCanceledError(err){
+  const msg=((err&&err.msg)||(err&&err.message)||String(err||'')).toLowerCase();
+  return !!(err&&err.canceled)||msg.includes('canceled')||msg.includes('cancelled')||msg.includes('terminated');
+}
+async function cancelRender(){
+  if(!vRenderInProgress||vRenderCancelRequested)return;
+  vRenderCancelRequested=true;
+  const btn=document.getElementById('rCancelBtn');
+  if(btn){btn.disabled=true;btn.textContent='Stopping…';}
+  const curPct=parseFloat((document.getElementById('rPct').textContent||'0').replace('%',''))||0;
+  setRP(curPct,'Stopping render…','Cancel requested by user');
+  if(window.electronAPI&&window.electronAPI.cancelRender&&vActiveRenderJobId){
+    try{await window.electronAPI.cancelRender(vActiveRenderJobId);}catch(e){}
+  }
+}
 
 sUpdateTimelineTransportUI();
 
@@ -2457,7 +3123,7 @@ function buildMixedMonoBuffer(audioBuffer){
   return mono;
 }
 
-function precomputeVisualAnalysisFrames(audioBuffer,totalFrames,fps,onProgress){
+function precomputeVisualAnalysisFrames(audioBuffer,totalFrames,fps,onProgress,shouldCancel){
   const mono=buildMixedMonoBuffer(audioBuffer);
   const sampleRate=audioBuffer.sampleRate;
   const hopSize=Math.max(1,Math.floor(sampleRate/fps));
@@ -2466,6 +3132,7 @@ function precomputeVisualAnalysisFrames(audioBuffer,totalFrames,fps,onProgress){
   const prev=new Float32Array(VIS_ANALYSER_BIN_COUNT);
   const frames=new Array(totalFrames);
   for(let frameIndex=0;frameIndex<totalFrames;frameIndex++){
+    if(shouldCancel&&shouldCancel())throw new Error('Render canceled by user.');
     const frameSample=Math.floor(frameIndex*hopSize);
     const windowStart=Math.max(0,frameSample-VIS_ANALYSER_FFT_SIZE);
     real.fill(0);
@@ -2490,12 +3157,34 @@ function precomputeVisualAnalysisFrames(audioBuffer,totalFrames,fps,onProgress){
   return frames;
 }
 
-async function startRender(){
-  if(!vAudioBuffer||!vAudioFile)return;
-  if(vIsPlaying){vCurrentOffset=getVTime();vStopAudio();cancelAnimationFrame(vAnimId);}
+async function startRender(opts){
+  opts=opts||{};
+  if(vRenderInProgress)return false;
+  if(!vAudioBuffer||!vAudioFile)return false;
+  vRenderInProgress=true;
+  vRenderCancelRequested=false;
+  vActiveRenderJobId=null;
+  vResetBarSmoothing();
+  if(vAnimId){cancelAnimationFrame(vAnimId);vAnimId=null;}
+  vResetParticleState();
+  if(vIsPlaying){vCurrentOffset=getVTime();vStopAudio();cancelAnimationFrame(vAnimId);vAnimId=null;}
   document.getElementById('renderBtn').disabled=true;
   document.getElementById('dlWrap').style.display='none';
   document.getElementById('rOverlay').classList.add('on');
+  const rCancelBtn=document.getElementById('rCancelBtn');
+  if(rCancelBtn){rCancelBtn.disabled=false;rCancelBtn.textContent='Stop Render';}
+
+  const restoreAfterRender=()=>{
+    if(window.electronAPI&&window.electronAPI.removeRenderProgressListener){
+      window.electronAPI.removeRenderProgressListener();
+    }
+    document.getElementById('rOverlay').classList.remove('on');
+    document.getElementById('renderBtn').disabled=false;
+    const btn=document.getElementById('rCancelBtn');
+    if(btn){btn.disabled=false;btn.textContent='Stop Render';}
+    vRenderInProgress=false;
+    vActiveRenderJobId=null;
+  };
 
   const isDesktop=window.electronAPI&&window.electronAPI.isDesktop;
   const parallelRenderingEnabled=true;
@@ -2515,50 +3204,75 @@ async function startRender(){
   if(isDesktop){
     setRP(0,'Checking FFmpeg…','');
     const check=await window.electronAPI.checkFFmpeg();
+    if(isRenderCancelRequested()){restoreAfterRender();idleLoop();return false;}
     if(!check.ok){
       alert('FFmpeg not found!\n\nInstall FFmpeg and make sure it\'s in your PATH:\nhttps://ffmpeg.org/download.html\n\n'+check.msg);
-      document.getElementById('rOverlay').classList.remove('on');
-      document.getElementById('renderBtn').disabled=false;
-      idleLoop();return;
+      restoreAfterRender();
+      idleLoop();return false;
     }
 
     setRP(5,'Checking GPU encoder…','');
     const gpuCheck=await window.electronAPI.checkGpuEncoder();
+    if(isRenderCancelRequested()){restoreAfterRender();idleLoop();return false;}
     if(!gpuCheck.gpu){
       alert('GPU encoder is required for desktop render, but h264_nvenc was not found in FFmpeg.\n\nInstall an FFmpeg build with NVENC support and update your GPU drivers.');
-      document.getElementById('rOverlay').classList.remove('on');
-      document.getElementById('renderBtn').disabled=false;
-      idleLoop();return;
+      restoreAfterRender();
+      idleLoop();return false;
     }
     activeGpuCodec=gpuCheck.encoder;
     setRP(10,'Ready to render',buildRenderSub(10,activeGpuCodec,parallelLabel));
     await new Promise(resolve=>setTimeout(resolve,800));
+    if(isRenderCancelRequested()){restoreAfterRender();idleLoop();return false;}
 
-    // Ask user where to save
-    const savePath=await window.electronAPI.saveDialog({
-      title:'Save Rendered MP4',
-      defaultPath:`srikanth_visualiser_${new Date().toISOString().slice(0,10)}.mp4`,
-      filters:[{name:'MP4 Video',extensions:['mp4']}]
-    });
+    // Ask user where to save unless a full output path is supplied (batch mode)
+    let savePath=opts.outputPath||null;
     if(!savePath){
-      document.getElementById('rOverlay').classList.remove('on');
-      document.getElementById('renderBtn').disabled=false;
-      idleLoop();return;
+      savePath=await window.electronAPI.saveDialog({
+        title:'Save Rendered MP4',
+        defaultPath:opts.defaultFileName||`srikanth_visualiser_${new Date().toISOString().slice(0,10)}.mp4`,
+        filters:[{name:'MP4 Video',extensions:['mp4']}]
+      });
     }
+    if(!savePath){
+      restoreAfterRender();
+      idleLoop();return false;
+    }
+    if(isRenderCancelRequested()){restoreAfterRender();idleLoop();return false;}
 
+    const resSelEl=document.getElementById('resSel');
+    if(opts.resolution&&resSelEl&&Array.from(resSelEl.options).some(o=>o.value===opts.resolution)){
+      resSelEl.value=opts.resolution;
+      updateAspect();
+    }
     const{w:RW,h:RH}=getRenderDims();
     offscreen.width=RW;offscreen.height=RH;
-    offParts=Array.from({length:150},()=>new VSparkle());offDrops=[];
+    vResetParticleState();
     const dur=vAudioBuffer.duration,totalFrames=Math.ceil(dur*FPS);
     setRP(12,'Analysing audio…',buildRenderSub(12,activeGpuCodec,parallelLabel));
-    const analysisFrames=precomputeVisualAnalysisFrames(vAudioBuffer,totalFrames,FPS,(done,total)=>{
-      const pct=12+(done/total)*8;
-      setRP(pct,'Analysing audio…',buildRenderSub(pct,activeGpuCodec,parallelLabel,`${done} / ${total}`));
-    });
+    let analysisFrames;
+    try{
+      analysisFrames=precomputeVisualAnalysisFrames(vAudioBuffer,totalFrames,FPS,(done,total)=>{
+        const pct=12+(done/total)*8;
+        setRP(pct,'Analysing audio…',buildRenderSub(pct,activeGpuCodec,parallelLabel,`${done} / ${total}`));
+      },()=>isRenderCancelRequested());
+    }catch(err){
+      if(isCanceledError(err)||isRenderCancelRequested()){restoreAfterRender();idleLoop();return false;}
+      alert('Audio analysis failed:\n'+(err.message||err));
+      restoreAfterRender();idleLoop();return false;
+    }
+    if(isRenderCancelRequested()){restoreAfterRender();idleLoop();return false;}
 
     // Make temp dir
     setRP(20,'Creating temp dir…',buildRenderSub(20,activeGpuCodec,parallelLabel));
     const tmpDir=await window.electronAPI.makeTempDir();
+    const cancelAndClean=async()=>{
+      window.electronAPI.removeRenderProgressListener();
+      try{await window.electronAPI.cleanTempDir(tmpDir);}catch(e){}
+      restoreAfterRender();
+      idleLoop();
+      return false;
+    };
+    if(isRenderCancelRequested())return await cancelAndClean();
 
     // Render frames
     setRP(21,'Rendering frames…',buildRenderSub(21,activeGpuCodec,parallelLabel));
@@ -2566,8 +3280,10 @@ async function startRender(){
     let lastFrameUiAt=Date.now();
     let lastFrameUiIndex=0;
     let frameBatch=[];
-    const canvasToJpeg=()=>new Promise(r=>offscreen.toBlob(b=>b.arrayBuffer().then(ab=>r(new Uint8Array(ab))),'image/jpeg',0.80));
+    const jpegQuality=sClamp(parseFloat(opts.jpegQuality),0.6,0.98)||0.80;
+    const canvasToJpeg=()=>new Promise(r=>offscreen.toBlob(b=>b.arrayBuffer().then(ab=>r(new Uint8Array(ab))),'image/jpeg',jpegQuality));
     for(let f=0;f<totalFrames;f++){
+      if(isRenderCancelRequested())return await cancelAndClean();
       const fakeData=analysisFrames[f];
       octx.clearRect(0,0,RW,RH);
       if(vImgBitmap){const sc=Math.max(RW/vImgBitmap.width,RH/vImgBitmap.height);const sw=vImgBitmap.width*sc,sh=vImgBitmap.height*sc;octx.drawImage(vImgBitmap,(RW-sw)/2,(RH-sh)/2,sw,sh);}
@@ -2594,12 +3310,14 @@ async function startRender(){
       }
       if(f%10===0)await new Promise(r=>setTimeout(r,0));
     }
+    if(isRenderCancelRequested())return await cancelAndClean();
 
     // Write audio
     setRP(71,'Writing audio…',buildRenderSub(71,activeGpuCodec,parallelLabel));
     const wavBlob=audioBufferToWav(vAudioBuffer);
     const wavArrayBuffer=await wavBlob.arrayBuffer();
     const audioPath=await window.electronAPI.writeAudio(tmpDir,wavArrayBuffer);
+    if(isRenderCancelRequested())return await cancelAndClean();
 
     // Encode with native FFmpeg
     setRP(75,'Encoding with native FFmpeg…',buildRenderSub(75,activeGpuCodec,parallelLabel));
@@ -2621,9 +3339,11 @@ async function startRender(){
         lastEncUiAt=now;
         lastEncUiFrame=frame;
       }
+      if(isRenderCancelRequested())setRP(pct,'Stopping render…',buildRenderSub(pct,activeGpuCodec,prLabel,'Canceling encoder'));
     });
 
     let renderResult;
+    vActiveRenderJobId=makeRenderJobId();
     try{
       renderResult = await window.electronAPI.renderMp4({
         framesDir:tmpDir,
@@ -2632,15 +3352,16 @@ async function startRender(){
         fps:FPS,
         width:RW,
         height:RH,
-        videoEncoder:'h264_nvenc'  // GPU-required path (no CPU fallback)
+        videoEncoder:'h264_nvenc',  // GPU-required path (no CPU fallback)
+        renderJobId:vActiveRenderJobId
       });
     }catch(err){
       window.electronAPI.removeRenderProgressListener();
+      if(isCanceledError(err)||isRenderCancelRequested())return await cancelAndClean();
       alert('Render failed:\n'+(err.msg||err));
       await window.electronAPI.cleanTempDir(tmpDir);
-      document.getElementById('rOverlay').classList.remove('on');
-      document.getElementById('renderBtn').disabled=false;
-      idleLoop();return;
+      restoreAfterRender();
+      idleLoop();return false;
     }
 
     window.electronAPI.removeRenderProgressListener();
@@ -2648,33 +3369,42 @@ async function startRender(){
     if(renderResult?.encoder)activeGpuCodec=renderResult.encoder;
     const prLabel=renderResult?.parallelRendering===false?'Parallel I/O: OFF':parallelLabel;
     setRP(100,'Done!',buildRenderSub(100,activeGpuCodec,prLabel,`Saved to ${savePath.split(/[\\/]/).pop()}`));
-    setTimeout(async()=>{
-      document.getElementById('rOverlay').classList.remove('on');
-      document.getElementById('renderBtn').disabled=false;
-      // Show in Finder/Explorer
+    await new Promise(resolve=>setTimeout(resolve,1200));
+    restoreAfterRender();
+    // Show in Finder/Explorer unless explicitly suppressed (batch mode)
+    if(opts.revealOnDone!==false&&window.electronAPI&&window.electronAPI.showInFolder){
       await window.electronAPI.showInFolder(savePath);
-      idleLoop();
-    },1200);
-    return;
+    }
+    idleLoop();
+    return true;
   }
 
   // ── BROWSER PATH — FFmpeg.wasm (fallback) ─────────────
   setRP(0,'Loading FFmpeg…','Open via localhost:8080');
   let ffmpeg,fetchFile;
   try{({createFFmpeg,fetchFile}=FFmpeg);ffmpeg=createFFmpeg({log:false});await ffmpeg.load();}
-  catch(err){alert('FFmpeg needs Python server.\nRun server.py and open via http://localhost:8080\n\n'+err);document.getElementById('rOverlay').classList.remove('on');document.getElementById('renderBtn').disabled=false;idleLoop();return;}
+  catch(err){alert('FFmpeg needs Python server.\nRun server.py and open via http://localhost:8080\n\n'+err);restoreAfterRender();idleLoop();return false;}
   const{w:RW,h:RH}=getRenderDims();
   offscreen.width=RW;offscreen.height=RH;
-  offParts=Array.from({length:150},()=>new VSparkle());offDrops=[];
+  vResetParticleState();
   const dur=vAudioBuffer.duration,totalFrames=Math.ceil(dur*FPS);
+  if(isRenderCancelRequested()){restoreAfterRender();idleLoop();return false;}
   setRP(2,'Analysing audio…','');
-  const analysisFrames=precomputeVisualAnalysisFrames(vAudioBuffer,totalFrames,FPS,(done,total)=>{
-    setRP(2+(done/total)*8,'Analysing audio…',`${done} of ${total}`);
-  });
+  let analysisFrames;
+  try{
+    analysisFrames=precomputeVisualAnalysisFrames(vAudioBuffer,totalFrames,FPS,(done,total)=>{
+      setRP(2+(done/total)*8,'Analysing audio…',`${done} of ${total}`);
+    },()=>isRenderCancelRequested());
+  }catch(err){
+    if(isCanceledError(err)||isRenderCancelRequested()){restoreAfterRender();idleLoop();return false;}
+    alert('Audio analysis failed:\n'+(err.message||err));
+    restoreAfterRender();idleLoop();return false;
+  }
   setRP(10,'Rendering frames…','');
   let lastWasmUiAt=Date.now();
   let lastWasmUiFrame=0;
   for(let f=0;f<totalFrames;f++){
+    if(isRenderCancelRequested()){restoreAfterRender();idleLoop();return false;}
     const fakeData=analysisFrames[f];
     octx.clearRect(0,0,RW,RH);
     if(vImgBitmap){const sc=Math.max(RW/vImgBitmap.width,RH/vImgBitmap.height);const sw=vImgBitmap.width*sc,sh=vImgBitmap.height*sc;octx.drawImage(vImgBitmap,(RW-sw)/2,(RH-sh)/2,sw,sh);}
@@ -2696,20 +3426,21 @@ async function startRender(){
     }
     if(f%8===0)await new Promise(r=>setTimeout(r,0));
   }
+  if(isRenderCancelRequested()){restoreAfterRender();idleLoop();return false;}
   setRP(75,'Writing audio…','');ffmpeg.FS('writeFile','audio_src',await fetchFile(vAudioFile));
   setRP(78,'Encoding MP4…','1–3 minutes');
   try{await ffmpeg.run('-framerate',`${FPS}`,'-i','f%06d.png','-i','audio_src','-c:v','libx264','-preset','ultrafast','-crf','20','-c:a','aac','-b:a','192k','-pix_fmt','yuv420p','-shortest','-movflags','+faststart','out.mp4');}
-  catch(err){alert('Encoding failed:\n'+err);document.getElementById('rOverlay').classList.remove('on');document.getElementById('renderBtn').disabled=false;idleLoop();return;}
+  catch(err){alert('Encoding failed:\n'+err);restoreAfterRender();idleLoop();return false;}
   setRP(97,'Packaging…','');await new Promise(r=>setTimeout(r,200));
   const data=ffmpeg.FS('readFile','out.mp4');const blob=new Blob([data.buffer],{type:'video/mp4'});const url=URL.createObjectURL(blob);
   setRP(100,'Done!',`${(blob.size/1024/1024).toFixed(1)} MB`);
-  setTimeout(()=>{
-    document.getElementById('rOverlay').classList.remove('on');
-    document.getElementById('dlLink').href=url;document.getElementById('dlLink').download=`srikanth_visualiser_${new Date().toISOString().slice(0,10)}.mp4`;
-    document.getElementById('dlWrap').style.display='block';document.getElementById('renderBtn').disabled=false;idleLoop();
-  },1000);
+  await new Promise(r=>setTimeout(r,1000));
+  restoreAfterRender();
+  document.getElementById('dlLink').href=url;document.getElementById('dlLink').download=opts.defaultFileName||`srikanth_visualiser_${new Date().toISOString().slice(0,10)}.mp4`;
+  document.getElementById('dlWrap').style.display='block';document.getElementById('renderBtn').disabled=false;idleLoop();
   for(let f=0;f<totalFrames;f++)try{ffmpeg.FS('unlink',`f${String(f).padStart(6,'0')}.png`);}catch(e){}
   try{ffmpeg.FS('unlink','audio_src');ffmpeg.FS('unlink','out.mp4');}catch(e){}
+  return true;
 }
 
 // audioBufferToWav helper (used in desktop render path)

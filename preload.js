@@ -8,6 +8,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // File dialogs
   saveDialog: (opts) => ipcRenderer.invoke('save-dialog', opts),
+  openFolderDialog: (opts) => ipcRenderer.invoke('open-folder-dialog', opts),
+  openProjectDialog: (opts) => ipcRenderer.invoke('open-project-dialog', opts),
+  writeProjectFile: (filePath, content) => ipcRenderer.invoke('write-project-file', { filePath, content }),
+  readProjectFile: (filePath) => ipcRenderer.invoke('read-project-file', { filePath }),
+  readBinaryFile: (filePath) => ipcRenderer.invoke('read-binary-file', { filePath }),
 
   // Render pipeline
   makeTempDir: () => ipcRenderer.invoke('make-temp-dir'),
@@ -15,6 +20,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     writeFramesBatch: (dir, frames) => ipcRenderer.invoke('write-frames-batch', { dir, frames }),
   writeAudio: (dir, data) => ipcRenderer.invoke('write-audio', { dir, data }),
   renderMp4: (opts) => ipcRenderer.invoke('render-mp4', opts),
+  cancelRender: (renderJobId) => ipcRenderer.invoke('cancel-render', { renderJobId }),
   cleanTempDir: (dir) => ipcRenderer.invoke('clean-temp-dir', dir),
   showInFolder: (filePath) => ipcRenderer.invoke('show-in-folder', filePath),
 

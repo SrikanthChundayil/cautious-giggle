@@ -62,6 +62,16 @@ npm install
 npm start
 ```
 
+## Shortcut Setup (Desktop + Start)
+If this project folder is moved, regenerate shortcuts so they target the correct project path:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\create-pinnable-shortcut.ps1 -ProjectRoot "D:\path\to\srikanth-suite-desktop"
+powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\create-restart-shortcut.ps1 -ProjectRoot "D:\path\to\srikanth-suite-desktop"
+```
+
+If `-ProjectRoot` is omitted, each script uses its own repository parent folder automatically.
+
 ## Typical Workflow
 1. Open Stitcher and import tracks.
 2. Adjust fades/volume/trims/gaps.

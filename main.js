@@ -10,6 +10,19 @@ const os = require('os');
 app.commandLine.appendSwitch('js-flags', '--max-old-space-size=4096');
 
 let mainWindow;
+const activeRenderJobs = new Map();
+
+function terminateProcessTree(proc) {
+  if (!proc || proc.killed) return;
+  try {
+    proc.kill('SIGTERM');
+  } catch (_) {}
+  if (process.platform === 'win32' && proc.pid) {
+    try {
+      spawn('taskkill', ['/PID', String(proc.pid), '/T', '/F']);
+    } catch (_) {}
+  }
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -62,6 +75,67 @@ ipcMain.handle('save-dialog', async (_, opts) => {
   return result.canceled ? null : result.filePath;
 });
 
+ipcMain.handle('open-folder-dialog', async (_, opts) => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: (opts && opts.title) || 'Select Output Folder',
+    defaultPath: (opts && opts.defaultPath) || app.getPath('videos'),
+    properties: ['openDirectory', 'createDirectory']
+  });
+  return result.canceled || !result.filePaths || result.filePaths.length === 0 ? null : result.filePaths[0];
+});
+
+ipcMain.handle('open-project-dialog', async (_, opts) => {
+  const result = await dialog.showOpenDialog(mainWindow, {
+    title: (opts && opts.title) || 'Open Project',
+    defaultPath: (opts && opts.defaultPath) || app.getPath('documents'),
+    properties: ['openFile'],
+    filters: opts && opts.filters ? opts.filters : [{ name: 'Srikanth Suite Project', extensions: ['ssproj', 'json'] }]
+  });
+  return result.canceled || !result.filePaths || result.filePaths.length === 0 ? null : result.filePaths[0];
+});
+
+ipcMain.handle('write-project-file', async (_, { filePath, content }) => {
+  try {
+    if (!filePath) return { ok: false, error: 'Missing file path.' };
+    fs.writeFileSync(path.resolve(String(filePath)), String(content || ''), 'utf8');
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e.message || String(e) };
+  }
+});
+
+ipcMain.handle('read-project-file', async (_, { filePath }) => {
+  try {
+    if (!filePath) return { ok: false, error: 'Missing file path.' };
+    const full = path.resolve(String(filePath));
+    if (!fs.existsSync(full)) return { ok: false, error: 'Project file not found.' };
+    const content = fs.readFileSync(full, 'utf8');
+    return { ok: true, content };
+  } catch (e) {
+    return { ok: false, error: e.message || String(e) };
+  }
+});
+
+ipcMain.handle('read-binary-file', async (_, { filePath }) => {
+  try {
+    if (!filePath) return { ok: false, error: 'Missing file path.' };
+    const full = path.resolve(String(filePath));
+    if (!fs.existsSync(full)) return { ok: false, error: 'Source file not found.' };
+    const stat = fs.statSync(full);
+    const buf = fs.readFileSync(full);
+    const ab = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+    return {
+      ok: true,
+      data: ab,
+      name: path.basename(full),
+      size: stat.size,
+      lastModified: stat.mtimeMs
+    };
+  } catch (e) {
+    return { ok: false, error: e.message || String(e) };
+  }
+});
+
 // ── RENDER MP4 WITH NATIVE FFMPEG ────────────────────────
 ipcMain.handle('render-mp4', async (event, opts) => {
   /*
@@ -76,28 +150,42 @@ ipcMain.handle('render-mp4', async (event, opts) => {
     }
   */
   return new Promise((resolve, reject) => {
-    const gpuCodec = 'h264_nvenc';
+    const renderJobId = opts && opts.renderJobId ? String(opts.renderJobId) : null;
+    // Select GPU encoder based on platform
+    const gpuCodec = process.platform === 'darwin' ? 'hevc_videotoolbox' : 'h264_nvenc';
     let encoderUsed = gpuCodec;
     const parallelRendering = true;
 
-    // Build FFmpeg args with required GPU encoder (no CPU fallback)
+    // Build FFmpeg args with GPU encoder (platform-specific parameters)
     const args = [
       '-y',
       '-framerate', String(opts.fps),
       '-i', path.join(opts.framesDir, 'f%06d.jpg'),
       '-i', opts.audioPath,
       '-c:v', gpuCodec,
-      '-cq', '19',
-      '-preset', 'p5',
-      '-c:a', 'aac',
-      '-b:a', '192k',
-      '-pix_fmt', 'yuv420p',
-      '-shortest',
-      '-movflags', '+faststart',
-      opts.outputPath
     ];
+    
+    // Add encoder-specific parameters
+    if (process.platform === 'darwin') {
+      // macOS VideoToolbox parameters
+      args.push('-q:v', '75');  // Quality for VideoToolbox
+      args.push('-preset', 'fast');  // fast, medium, slow
+    } else {
+      // NVIDIA NVENC parameters
+      args.push('-cq', '19');
+      args.push('-preset', 'p5');
+    }
+    
+    // Common audio/container parameters
+    args.push('-c:a', 'aac');
+    args.push('-b:a', '192k');
+    args.push('-pix_fmt', 'yuv420p');
+    args.push('-shortest');
+    args.push('-movflags', '+faststart');
+    args.push(opts.outputPath);
 
     const proc = spawn('ffmpeg', args);
+  if (renderJobId) activeRenderJobs.set(renderJobId, { proc, canceled: false });
     let stderr = '';
     let encoderDetected = false;
 
@@ -106,8 +194,14 @@ ipcMain.handle('render-mp4', async (event, opts) => {
       
       // Detect which encoder FFmpeg actually used
       if (!encoderDetected) {
-        if (stderr.includes('h264_nvenc')) {
-          encoderUsed = 'h264_nvenc (GPU)';
+        const isMac = process.platform === 'darwin';
+        const encoderPatterns = isMac 
+          ? ['hevc_videotoolbox', 'h264_videotoolbox']
+          : ['h264_nvenc'];
+        
+        if (encoderPatterns.some(pattern => stderr.includes(pattern))) {
+          const detectedCodec = encoderPatterns.find(pattern => stderr.includes(pattern)) || gpuCodec;
+          encoderUsed = `${detectedCodec} (GPU)`;
           encoderDetected = true;
           event.sender.send('render-progress', {
             frame: 0,
@@ -131,12 +225,34 @@ ipcMain.handle('render-mp4', async (event, opts) => {
       }
     });
 
-    proc.on('error', err => reject({ ok: false, msg: 'FFmpeg spawn error: ' + err.message }));
+    proc.on('error', err => {
+      if (renderJobId) activeRenderJobs.delete(renderJobId);
+      reject({ ok: false, msg: 'FFmpeg spawn error: ' + err.message });
+    });
     proc.on('close', code => {
+      const entry = renderJobId ? activeRenderJobs.get(renderJobId) : null;
+      if (renderJobId) activeRenderJobs.delete(renderJobId);
+      if (entry && entry.canceled) {
+        reject({ ok: false, canceled: true, msg: 'Render canceled by user.' });
+        return;
+      }
       if (code === 0) resolve({ ok: true, encoder: encoderUsed, parallelRendering });
       else reject({ ok: false, msg: 'FFmpeg failed (exit ' + code + ')\n' + stderr.slice(-500) });
     });
   });
+});
+
+ipcMain.handle('cancel-render', async (_, { renderJobId } = {}) => {
+  let canceled = 0;
+  const ids = renderJobId ? [String(renderJobId)] : Array.from(activeRenderJobs.keys());
+  for (const id of ids) {
+    const entry = activeRenderJobs.get(id);
+    if (!entry || !entry.proc) continue;
+    entry.canceled = true;
+    terminateProcessTree(entry.proc);
+    canceled++;
+  }
+  return { ok: true, canceled };
 });
 
 // ── CHECK GPU ENCODER AVAILABILITY ──────────────────────────
@@ -155,10 +271,16 @@ ipcMain.handle('check-gpu-encoder', async () => {
 
     proc.on('close', () => {
       const output = stdout + stderr;
-      const hasGpu = output.includes('h264_nvenc');
+      const isMac = process.platform === 'darwin';
+      const hasGpu = isMac 
+        ? output.includes('hevc_videotoolbox') || output.includes('h264_videotoolbox')
+        : output.includes('h264_nvenc');
+      const encoder = isMac 
+        ? (output.includes('hevc_videotoolbox') ? 'hevc_videotoolbox (GPU)' : (output.includes('h264_videotoolbox') ? 'h264_videotoolbox (GPU)' : 'Not available'))
+        : (hasGpu ? 'h264_nvenc (GPU)' : 'Not available');
       resolve({
         gpu: hasGpu,
-        encoder: hasGpu ? 'h264_nvenc (GPU)' : 'Not available'
+        encoder: encoder
       });
     });
 
